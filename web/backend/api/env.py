@@ -22,50 +22,51 @@ def check_environment():
         checker = EnvChecker()
 
         # 执行所有检查
-        os_info = checker.check_os()
-        python_info = checker.check_python()
-        docker_info = checker.check_docker()
-        disk_info = checker.check_disk_space()
-        network_info = checker.check_network()
+        checker.check_os()
+        checker.check_python()
+        checker.check_docker()
+        checker.check_disk_space()
+        checker.check_network()
+
+        # 从 checker.checks 获取结果
+        checks = checker.checks
 
         # 汇总结果
         results = {
             'os': {
-                'name': os_info.get('name', 'Unknown'),
-                'version': os_info.get('version', 'Unknown'),
-                'status': os_info.get('status', 'unknown'),
-                'message': os_info.get('message', '')
+                'name': checks.get('os', {}).get('name', 'Unknown'),
+                'supported': checks.get('os', {}).get('supported', False),
+                'status': checks.get('os', {}).get('status', '❌')
             },
             'python': {
-                'version': python_info.get('version', 'Unknown'),
-                'status': python_info.get('status', 'unknown'),
-                'message': python_info.get('message', '')
+                'name': checks.get('python', {}).get('name', 'Unknown'),
+                'supported': checks.get('python', {}).get('supported', False),
+                'status': checks.get('python', {}).get('status', '❌')
             },
             'docker': {
-                'installed': docker_info.get('status') == 'success',
-                'version': docker_info.get('version', ''),
-                'status': docker_info.get('status', 'unknown'),
-                'message': docker_info.get('message', '')
+                'name': checks.get('docker', {}).get('name', 'Docker'),
+                'supported': checks.get('docker', {}).get('supported', False),
+                'status': checks.get('docker', {}).get('status', '❌')
             },
             'disk': {
-                'available_gb': disk_info.get('available_gb', 0),
-                'status': disk_info.get('status', 'unknown'),
-                'message': disk_info.get('message', '')
+                'name': checks.get('disk_space', {}).get('name', 'Disk Space'),
+                'supported': checks.get('disk_space', {}).get('supported', False),
+                'status': checks.get('disk_space', {}).get('status', '❌')
             },
             'network': {
-                'connected': network_info.get('status') == 'success',
-                'status': network_info.get('status', 'unknown'),
-                'message': network_info.get('message', '')
+                'name': checks.get('network', {}).get('name', 'Network'),
+                'supported': checks.get('network', {}).get('supported', False),
+                'status': checks.get('network', {}).get('status', '❌')
             }
         }
 
         # 判断整体状态
         all_checks_passed = all([
-            os_info.get('status') == 'success',
-            python_info.get('status') == 'success',
-            docker_info.get('status') == 'success',
-            disk_info.get('status') == 'success',
-            network_info.get('status') == 'success'
+            checks.get('os', {}).get('supported', False),
+            checks.get('python', {}).get('supported', False),
+            checks.get('docker', {}).get('supported', False),
+            checks.get('disk_space', {}).get('supported', False),
+            checks.get('network', {}).get('supported', False)
         ])
 
         return jsonify({
@@ -75,6 +76,8 @@ def check_environment():
         })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)
