@@ -1,0 +1,58 @@
+networks:
+  mainnet:
+    network_id: 1
+    genesis_fork_version: "0x00000000"
+    deposit_contract: "0x00000000219ab540356cBB839Cbe05303d7705Fa"
+    beacon_rpc: "https://ethereum-beacon-api.publicnode.com"
+
+  holesky:
+    network_id: 17000
+    genesis_fork_version: "0x01017000"
+    deposit_contract: "0x4242424242424242424242424242424242424242"
+    beacon_rpc: "https://holesky-beacon-api.publicnode.com"
+
+  hoodi:
+    network_id: 17001
+    genesis_fork_version: "0x10017000"
+    deposit_contract: "0x4242424242424242424242424242424242424242"
+    beacon_rpc: "https://hoodi-beacon-api.lido.fi"
+    lido_csm: true
+
+  sepolia:
+    network_id: 11155111
+    genesis_fork_version: "0x90000069"
+    deposit_contract: "0x7f02C3E3c98b133055B8B348B2Ac625669Ed295D"
+    beacon_rpc: "https://sepolia-beacon-api.publicnode.com"
+
+clients:
+  lighthouse:
+    execution: geth
+    consensus: lighthouse
+
+  prysm:
+    execution: geth
+    consensus: prysm
+
+  teku:
+    execution: geth
+    consensus: teku
+
+  nimbus:
+    execution: geth
+    consensus: nimbus
+
+requirements:
+  mainnet:
+    storage_gb: 2000
+    ram_gb: 16
+    cpu_cores: 4
+
+  holesky:
+    storage_gb: 100
+    ram_gb: 8
+    cpu_cores: 2
+
+  hoodi:
+    storage_gb: 100
+    ram_gb: 8
+    cpu_cores: 2
