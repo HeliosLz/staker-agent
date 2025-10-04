@@ -87,29 +87,30 @@ export default function SetupWizard() {
     }
   };
 
-  // 自动修复问题
+  // 获取安装指引（安全的方式）
   const handleAutoFix = async (issue: string) => {
     setFixingIssue(issue);
     setError(null);
     try {
-      const response = await fetch(`http://localhost:5001/api/fix/docker/install`, {
-        method: 'POST',
+      // 使用新的安全 API - 只获取指引，不执行命令
+      const response = await fetch(`http://localhost:5001/api/fix/docker/instructions`, {
+        method: 'GET',
       });
 
       if (!response.ok) {
-        throw new Error(`修复失败: ${response.statusText}`);
+        throw new Error(`获取指引失败: ${response.statusText}`);
       }
 
       const data = await response.json();
 
-      if (data.success && data.instructions) {
+      if (data.instructions) {
         setFixInstructions(data.instructions);
       } else if (data.error) {
         setError(data.error);
       }
     } catch (error: any) {
-      console.error('Auto-fix failed:', error);
-      setError(error.message || '自动修复失败，请手动安装');
+      console.error('Failed to get instructions:', error);
+      setError(error.message || '获取安装指引失败');
     } finally {
       setFixingIssue(null);
     }
