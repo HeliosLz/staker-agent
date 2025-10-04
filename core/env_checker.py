@@ -87,11 +87,11 @@ class EnvChecker:
 
         for key, check in self.checks.items():
             # Build details string
-            details = check.get('value', check['name'])
+            details = check.get('value') or check['name']
 
             # Add error if exists
             if check.get('error'):
-                details += f" - {check['error']}"
+                details = f"{details} - {check['error']}"
 
             table.add_row(
                 key.replace('_', ' ').title(),
