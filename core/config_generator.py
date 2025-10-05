@@ -64,12 +64,12 @@ GRAFFITI=Staker-Agent
 JWT_SECRET=
 
 # Execution Layer settings
-EL_NODE=geth.yml
+EL_NODE=http://execution:8551
 GETH_DOCKERFILE=Dockerfile.binary
 EL_P2P_PORT=30303
 
 # Consensus Layer settings
-CL_NODE=lighthouse-cl-only.yml
+CL_NODE=http://consensus:5052
 LH_DOCKERFILE=Dockerfile.binary
 CL_P2P_PORT=9000
 LOG_LEVEL=info
@@ -104,6 +104,12 @@ DOMAIN=
         # Add fee recipient if provided
         if fee_recipient:
             env_content += f"# Fee recipient address\nFEE_RECIPIENT={fee_recipient}\n\n"
+        elif network == 'mainnet':
+            # Mainnet requires a fee recipient
+            env_content += "# Fee recipient address (REQUIRED for mainnet)\n# Set this to your Ethereum address to receive transaction fees\n# FEE_RECIPIENT=0x...\n\n"
+        else:
+            # Testnets: use a default burn address
+            env_content += "# Fee recipient address (optional for testnet)\nFEE_RECIPIENT=0x0000000000000000000000000000000000000000\n\n"
 
         # Add withdrawal address if provided (for Lido CSM)
         if withdrawal_address:
