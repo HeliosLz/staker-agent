@@ -69,8 +69,35 @@ EL_P2P_PORT=30303
 
 # Consensus Layer settings
 CL_NODE=http://consensus:5052
-LH_DOCKERFILE=Dockerfile.binary
-CL_P2P_PORT=9000
+"""
+
+        # Add client-specific configuration
+        if client == 'lighthouse':
+            env_content += """LH_DOCKERFILE=Dockerfile.binary
+"""
+        elif client == 'prysm':
+            env_content += """PRYSM_DOCKERFILE=Dockerfile.binary
+PRYSM_HOST=prysm
+PRYSM_PORT=9000
+PRYSM_UDP_PORT=9000
+CL_QUIC_PORT=9001
+PRYSM_DOCKER_TAG=stable
+PRYSM_DOCKER_VC_TAG=stable
+PRYSM_DOCKER_CTL_TAG=stable
+PRYSM_DOCKER_REPO=gcr.io/prysmaticlabs/prysm/beacon-chain
+PRYSM_DOCKER_VC_REPO=gcr.io/prysmaticlabs/prysm/validator
+PRYSM_DOCKER_CTL_REPO=gcr.io/prysmaticlabs/prysm/cmd/prysmctl
+"""
+        elif client == 'teku':
+            env_content += """TEKU_DOCKERFILE=Dockerfile.binary
+TEKU_DOCKER_TAG=latest
+"""
+        elif client == 'nimbus':
+            env_content += """NIMBUS_DOCKERFILE=Dockerfile.binary
+NIMBUS_DOCKER_TAG=multiarch-latest
+"""
+
+        env_content += """CL_P2P_PORT=9000
 LOG_LEVEL=info
 
 # Validator settings
