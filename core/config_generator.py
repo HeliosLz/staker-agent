@@ -60,6 +60,45 @@ NETWORK={network_map[network]}
 # Graffiti for consensus client
 GRAFFITI=Staker-Agent
 
+# JWT secret for EL-CL communication (auto-generated)
+JWT_SECRET=
+
+# Execution Layer settings
+EL_NODE=geth.yml
+GETH_DOCKERFILE=Dockerfile.binary
+EL_P2P_PORT=30303
+
+# Consensus Layer settings
+CL_NODE=lighthouse-cl-only.yml
+LH_DOCKERFILE=Dockerfile.binary
+CL_P2P_PORT=9000
+LOG_LEVEL=info
+
+# Validator settings
+DOPPELGANGER=true
+
+# Deposit CLI settings
+DEPCLI_DOCKERFILE=Dockerfile.binary
+
+# Metrics and monitoring
+METRICS=true
+PROM_PORT=9090
+GRAFANA_PORT=3000
+
+# Beacon stats (optional)
+BEACON_STATS_API=
+BEACON_STATS_MACHINE=
+
+# MEV-Boost (disabled by default)
+MEV_BOOST=
+MEV_NODE=
+
+# Web3Signer (disabled by default)
+W3S_NODE=
+
+# Domain for SSL (optional)
+DOMAIN=
+
 """
 
         # Add fee recipient if provided
@@ -76,33 +115,11 @@ GRAFFITI=Staker-Agent
 # Set the fee recipient to Lido's execution layer rewards vault
 FEE_RECIPIENT=0xE73a3602b99f1f913e72F8bdcBC235e206794Ac8
 
-# MEV-Boost configuration
+# MEV-Boost configuration for Lido
 # Uncomment to use MEV-Boost with Lido
 # MEV_BOOST=true
 # MEV_RELAYS=https://0xac6e77dfe25ecd6110b8e780608cce0dab71fdd5ebea22a16c0205200f2f8e2e3ad3b71d3499c54ad14d6c21b41a37ae@boost-relay.flashbots.net
 
-"""
-
-        env_content += """# Port configuration
-# Execution layer P2P port
-EL_P2P_PORT=30303
-
-# Consensus layer P2P port
-CL_P2P_PORT=9000
-
-# Enable metrics
-METRICS=true
-
-# Prometheus port
-PROM_PORT=9090
-
-# Grafana port
-GRAFANA_PORT=3000
-
-# Enable checkpoint sync for faster initial sync
-CHECKPOINT_SYNC=true
-
-# Checkpoint sync URL
 """
 
         # Add checkpoint sync URLs per network
@@ -113,7 +130,11 @@ CHECKPOINT_SYNC=true
             'sepolia': 'https://checkpoint-sync.sepolia.ethpandaops.io'
         }
 
-        env_content += f"CHECKPOINT_SYNC_URL={checkpoint_urls.get(network, '')}\n\n"
+        env_content += f"""# Enable checkpoint sync for faster initial sync
+CHECKPOINT_SYNC=true
+CHECKPOINT_SYNC_URL={checkpoint_urls.get(network, '')}
+
+"""
 
         # Add resource limits
         requirements = self.config['requirements'].get(network, {})

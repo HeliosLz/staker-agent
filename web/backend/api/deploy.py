@@ -23,15 +23,27 @@ def start_deployment():
     try:
         deployer = DeployManager()
 
-        # 执行部署
-        result = deployer.deploy()
+        # 执行部署（跳过交互式确认，Web UI 已确认）
+        result = deployer.deploy(skip_confirm=True)
 
-        return jsonify({
-            'success': result.get('status') == 'success',
-            'data': result
-        })
+        if result:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'message': 'Deployment started successfully'
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Deployment failed'
+            }), 500
 
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f'❌ Deployment error: {error_details}')
+
         return jsonify({
             'success': False,
             'error': str(e)

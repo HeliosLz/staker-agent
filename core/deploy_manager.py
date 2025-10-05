@@ -21,10 +21,14 @@ class DeployManager:
     def __init__(self, eth_docker_path=None):
         self.eth_docker_path = eth_docker_path or os.path.expanduser('~/eth-docker')
 
-    def deploy(self, services='all'):
+    def deploy(self, services='all', skip_confirm=False):
         """
         Main deployment orchestration.
         Simple, linear, no nesting.
+
+        Args:
+            services: Services to deploy (default: 'all')
+            skip_confirm: Skip confirmation prompt (for API/non-interactive use)
         """
         console.print("\n[bold cyan]🛰️  Staker Agent - Deploy[/bold cyan]\n")
 
@@ -32,7 +36,7 @@ class DeployManager:
         if not self._check_prerequisites():
             return False
 
-        if not self._confirm_deployment():
+        if not skip_confirm and not self._confirm_deployment():
             return False
 
         if not self._pull_images():
