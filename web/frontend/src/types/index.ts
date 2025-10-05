@@ -16,30 +16,28 @@ export interface Client {
 export interface EnvCheck {
   os: {
     name: string;
-    version: string;
     status: string;
-    message: string;
+    supported: boolean;
   };
   python: {
-    version: string;
+    name: string;
     status: string;
-    message: string;
+    supported: boolean;
   };
   docker: {
-    installed: boolean;
-    version: string;
+    name: string;
     status: string;
-    message: string;
+    supported: boolean;
   };
   disk: {
-    available_gb: number;
+    name: string;
     status: string;
-    message: string;
+    supported: boolean;
   };
   network: {
-    connected: boolean;
+    name: string;
     status: string;
-    message: string;
+    supported: boolean;
   };
 }
 

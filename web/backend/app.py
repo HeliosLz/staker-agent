@@ -35,12 +35,14 @@ from api.env import env_bp
 from api.config import config_bp
 from api.deploy import deploy_bp
 from api.status import status_bp
+from api.fix import fix_bp
 
 # 注册蓝图
 app.register_blueprint(env_bp, url_prefix='/api/env')
 app.register_blueprint(config_bp, url_prefix='/api/config')
 app.register_blueprint(deploy_bp, url_prefix='/api/deploy')
 app.register_blueprint(status_bp, url_prefix='/api/status')
+app.register_blueprint(fix_bp, url_prefix='/api/fix')
 
 # 导入 WebSocket 事件处理
 from websocket import init_socketio

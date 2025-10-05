@@ -54,19 +54,24 @@ def generate_config():
             }), 400
 
         # 创建配置生成器
-        generator = ConfigGenerator(network, client)
+        generator = ConfigGenerator()
 
-        # 设置可选参数
-        if 'fee_recipient' in data:
-            generator.set_fee_recipient(data['fee_recipient'])
+        # 生成配置（network 和 client 作为参数传给 generate_env）
+        success = generator.generate_env(
+            network=network,
+            client=client,
+            fee_recipient=data.get('fee_recipient'),
+            withdrawal_address=data.get('withdrawal_address')
+        )
 
-        if 'checkpoint_url' in data:
-            generator.set_checkpoint_sync(data['checkpoint_url'])
-
-        # 生成配置
-        config_path = generator.generate()
+        if not success:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to generate configuration'
+            }), 500
 
         # 读取生成的配置
+        config_path = os.path.join(generator.eth_docker_path, '.env')
         with open(config_path, 'r') as f:
             config_content = f.read()
 
