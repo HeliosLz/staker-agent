@@ -38,7 +38,7 @@ def generate_config():
             }), 400
 
         # 验证网络
-        valid_networks = ['mainnet', 'holesky', 'hoodi', 'sepolia']
+        valid_networks = ['mainnet', 'holesky', 'sepolia']
         if network not in valid_networks:
             return jsonify({
                 'success': False,
@@ -109,12 +109,6 @@ def get_networks():
             'name': 'Holesky',
             'description': 'Holesky Testnet - 推荐测试网',
             'recommended': True
-        },
-        {
-            'id': 'hoodi',
-            'name': 'Hoodi (Lido CSM)',
-            'description': 'Lido CSM Testnet - Lido 专用',
-            'recommended': False
         },
         {
             'id': 'sepolia',

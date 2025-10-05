@@ -33,7 +33,6 @@ class ConfigGenerator:
         network_map = {
             'mainnet': 'mainnet',
             'holesky': 'holesky',
-            'hoodi': 'hoodi',
             'sepolia': 'sepolia'
         }
 
@@ -115,24 +114,10 @@ DOMAIN=
         if withdrawal_address:
             env_content += f"# Withdrawal address\nWITHDRAWAL_ADDRESS={withdrawal_address}\n\n"
 
-        # Add Lido CSM specific config for hoodi
-        if network == 'hoodi':
-            env_content += """# Lido CSM Configuration
-# Set the fee recipient to Lido's execution layer rewards vault
-FEE_RECIPIENT=0xE73a3602b99f1f913e72F8bdcBC235e206794Ac8
-
-# MEV-Boost configuration for Lido
-# Uncomment to use MEV-Boost with Lido
-# MEV_BOOST=true
-# MEV_RELAYS=https://0xac6e77dfe25ecd6110b8e780608cce0dab71fdd5ebea22a16c0205200f2f8e2e3ad3b71d3499c54ad14d6c21b41a37ae@boost-relay.flashbots.net
-
-"""
-
         # Add checkpoint sync URLs per network
         checkpoint_urls = {
             'mainnet': 'https://beaconstate.ethstaker.cc',
             'holesky': 'https://checkpoint-sync.holesky.ethpandaops.io',
-            'hoodi': 'https://checkpoint-sync.hoodi.lido.fi',
             'sepolia': 'https://checkpoint-sync.sepolia.ethpandaops.io'
         }
 
