@@ -348,24 +348,24 @@ export default function SetupWizard() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">验证者数量</label>
+                <label className="block text-sm font-medium mb-2 text-gray-700">验证者数量</label>
                 <input
                   type="number"
                   min="1"
                   value={validatorCount}
                   onChange={(e) => setValidatorCount(parseInt(e.target.value))}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">提款地址</label>
+                <label className="block text-sm font-medium mb-2 text-gray-700">提款地址</label>
                 <input
                   type="text"
                   placeholder="0x..."
                   value={withdrawalAddress}
                   onChange={(e) => setWithdrawalAddress(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 font-mono"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 font-mono bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -461,7 +461,7 @@ export default function SetupWizard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8" style={{ background: '#f9fafb', color: '#111827' }}>
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Progress Bar */}
         <div className="mb-8">
