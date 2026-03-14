@@ -1,7 +1,7 @@
 """
 init command - Environment initialization and checks
 """
-from core.env_checker import EnvChecker
+from core.system.env_checker import EnvChecker
 from rich.console import Console
 
 console = Console()

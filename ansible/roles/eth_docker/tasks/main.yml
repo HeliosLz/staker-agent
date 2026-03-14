@@ -1,0 +1,31 @@
+---
+- name: Ensure eth-docker directory exists
+  file:
+    path: "{{ staker_remote_base }}/eth-docker"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Extract eth-docker bundle
+  unarchive:
+    src: "{{ staker_bundle_path }}"
+    dest: "{{ staker_remote_base }}/eth-docker"
+    remote_src: true
+    extra_opts:
+      - --strip-components=1
+
+- name: Pull latest images
+  command: docker compose pull
+  args:
+    chdir: "{{ staker_remote_base }}/eth-docker"
+
+- name: Launch eth-docker stack
+  command: docker compose up -d
+  args:
+    chdir: "{{ staker_remote_base }}/eth-docker"
+
+- name: Prune bundle archive
+  file:
+    path: "{{ staker_bundle_path }}"
+    state: absent

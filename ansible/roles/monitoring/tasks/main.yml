@@ -1,0 +1,8 @@
+---
+- name: Ensure monitoring directories exist
+  file:
+    path: "{{ staker_remote_base }}/monitoring"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'

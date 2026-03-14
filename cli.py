@@ -22,7 +22,7 @@ def init():
 @cli.command()
 def validate():
     """Validate configuration and setup"""
-    from core.validator import ConfigValidator
+    from core.config.validator import ConfigValidator
     validator = ConfigValidator()
     validator.validate_all()
 
@@ -58,10 +58,28 @@ def keys(action, count, network, withdrawal_address, keys_path):
     run_keys(action, count, network, withdrawal_address, keys_path)
 
 @cli.command()
-def deploy():
-    """Deploy and start validator node"""
+@click.option('--host', help='Remote host (user@host or host)')
+@click.option('--user', '-u', default=None, help='SSH username (overrides user@host)')
+@click.option('--port', '-p', default=22, help='SSH port', type=int)
+@click.option('--ssh-key', type=click.Path(exists=True, dir_okay=False), help='Path to SSH private key')
+@click.option('--network', type=click.Choice(['mainnet', 'holesky', 'hoodi', 'sepolia']), help='Network for remote deployment')
+@click.option('--client', type=click.Choice(['lighthouse', 'prysm', 'teku', 'nimbus']), help='Consensus client for remote deployment')
+@click.option('--fee-recipient', help='Fee recipient address (0x...) for remote deployment')
+@click.option('--withdrawal-address', help='Withdrawal address for remote deployment (0x...)')
+def deploy(host, user, port, ssh_key, network, client, fee_recipient, withdrawal_address):
+    """Deploy and start validator node."""
     from commands.deploy import run_deploy
-    run_deploy()
+
+    run_deploy(
+        host=host,
+        user=user,
+        port=port,
+        ssh_key=ssh_key,
+        network=network,
+        client=client,
+        fee_recipient=fee_recipient,
+        withdrawal_address=withdrawal_address,
+    )
 
 @cli.command()
 @click.option('--detailed', is_flag=True, help='Show detailed status')
@@ -82,16 +100,28 @@ def logs(service, follow):
 @cli.command()
 def stop():
     """Stop validator node"""
-    from core.deploy_manager import DeployManager
+    from core.deploy.manager import DeployManager
     deploy_mgr = DeployManager()
     deploy_mgr.stop()
 
 @cli.command()
 def start():
     """Start validator node"""
-    from core.deploy_manager import DeployManager
+    from core.deploy.manager import DeployManager
     deploy_mgr = DeployManager()
     deploy_mgr.start()
+
+
+@cli.command(name="remote-preflight")
+@click.argument('target')
+@click.option('--user', '-u', default=None, help='SSH username (overrides user@host)')
+@click.option('--port', '-p', default=22, help='SSH port', type=int)
+@click.option('--ssh-key', type=click.Path(exists=True, dir_okay=False), help='Path to SSH private key')
+def remote_preflight(target, user, port, ssh_key):
+    """Run remote host preflight checks over SSH."""
+    from commands.remote import run_remote_preflight
+
+    run_remote_preflight(target, user=user, port=port, ssh_key=ssh_key)
 
 if __name__ == '__main__':
     cli()

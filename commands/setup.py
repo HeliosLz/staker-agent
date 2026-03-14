@@ -2,9 +2,9 @@
 setup command - Install Docker and eth-docker
 """
 from rich.console import Console
-from core.docker_manager import DockerManager
-from core.eth_docker import EthDockerManager
-from core.env_checker import EnvChecker
+from core.docker.manager import DockerManager
+from core.docker.eth_docker import EthDockerManager
+from core.system.env_checker import EnvChecker
 
 console = Console()
 

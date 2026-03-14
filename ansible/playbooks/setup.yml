@@ -1,0 +1,11 @@
+---
+- name: Prepare remote host for staker agent
+  hosts: remote
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: docker
+      tags: [docker]
+    - role: monitoring
+      tags: [monitoring]

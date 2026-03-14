@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Terminal as TerminalIcon, Send } from 'lucide-react';
+import { Terminal as TerminalIcon } from 'lucide-react';
 
 export default function Terminal() {
   const [command, setCommand] = useState('');

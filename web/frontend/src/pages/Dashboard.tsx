@@ -3,7 +3,7 @@ import { Activity, Clock, DollarSign, HardDrive, Network, Play, Square, RotateCw
 import { statusAPI } from '../services/api';
 
 export default function Dashboard() {
-  const [status, setStatus] = useState<any>(null);
+  const [, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {

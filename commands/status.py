@@ -2,7 +2,7 @@
 status command - Check validator node status
 """
 from rich.console import Console
-from core.status_monitor import StatusMonitor
+from core.node.status import StatusMonitor
 
 console = Console()
 

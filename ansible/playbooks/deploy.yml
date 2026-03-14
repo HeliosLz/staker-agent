@@ -1,0 +1,9 @@
+---
+- name: Deploy eth-docker stack
+  hosts: remote
+  become: true
+  gather_facts: false
+
+  roles:
+    - role: eth_docker
+      tags: [deploy]

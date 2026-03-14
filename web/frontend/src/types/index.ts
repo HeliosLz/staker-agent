@@ -18,26 +18,31 @@ export interface EnvCheck {
     name: string;
     status: string;
     supported: boolean;
+    error?: string;
   };
   python: {
     name: string;
     status: string;
     supported: boolean;
+    error?: string;
   };
   docker: {
     name: string;
     status: string;
     supported: boolean;
+    error?: string;
   };
   disk: {
     name: string;
     status: string;
     supported: boolean;
+    error?: string;
   };
   network: {
     name: string;
     status: string;
     supported: boolean;
+    error?: string;
   };
 }
 

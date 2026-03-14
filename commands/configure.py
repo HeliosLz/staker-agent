@@ -4,8 +4,8 @@ configure command - Configure eth-docker settings
 from rich.console import Console
 from rich.table import Table
 from rich.prompt import Prompt, Confirm
-from core.config_generator import ConfigGenerator
-from core.env_checker import EnvChecker
+from core.config.generator import ConfigGenerator
+from core.system.env_checker import EnvChecker
 import os
 
 console = Console()
