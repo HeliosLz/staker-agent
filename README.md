@@ -1,32 +1,71 @@
-# 🛰️ Staker Agent
+# Staker Agent
 
-一个 AI 驱动的以太坊验证者部署和管理工具。让任何人都能在几分钟内部署和管理以太坊验证节点。
+以太坊验证者一站式部署与管理工具。通过 CLI 或 Web UI，在几分钟内完成从环境检查到节点上线的全流程。
 
-## ✨ 特性
+## 特性
 
-- ✅ **本地部署优先** - 支持在自己的电脑上运行（降低成本）
-- ✅ **自动环境检测** - 检测 OS、Docker、磁盘空间等
-- ✅ **智能配置** - 自动生成 eth-docker 配置
-- ✅ **多网络支持** - Mainnet、Holesky、Hoodi (Lido CSM)、Sepolia
-- ✅ **多客户端支持** - Lighthouse、Prysm、Teku、Nimbus
-- ✅ **密钥管理** - 安全生成和管理验证者密钥
-- ✅ **美观的 CLI** - 彩色输出、表格展示、清晰提示
+- **一键部署** — Web UI 单次点击，后端自动编排 6 步流程（环境检查 → 安装 eth-docker → 生成配置 → 生成密钥 → 部署 → 验证）
+- **实时进度** — Socket.IO 推送每步状态，前端 Stepper 实时展示
+- **本地 + 远程** — 本地 Docker Compose 直接部署，或通过 SSH + Ansible 部署到远程服务器
+- **多网络** — Mainnet、Holesky、Sepolia
+- **多客户端** — Lighthouse (Rust)、Prysm (Go)、Teku (Java)、Nimbus (Nim)，执行层统一使用 Geth
+- **Lido CSM** — 内置 Lido Community Staking Module 集成，自动填充 withdrawal vault 地址
+- **CLI + Web** — 命令行和 Web 界面双入口，共享 `core/` 业务逻辑
 
-## 🚀 快速开始
+## 架构
 
-### 安装依赖
-
-```bash
-pip install -r requirements.txt
+```
+┌──────────┐   ┌──────────────────┐
+│  CLI     │   │  Flask API       │
+│ (Click)  │   │ + Socket.IO      │
+└────┬─────┘   └──────┬───────────┘
+     │                │
+     │    ┌───────────┴───────────┐
+     │    │  staker_backend/      │
+     │    │  routes → services    │
+     │    │  → repositories      │
+     │    └───────────┬───────────┘
+     │                │
+     └────────┬───────┘
+              ▼
+        ┌──────────┐
+        │  core/*  │
+        └────┬─────┘
+     ┌───────┼───────┐
+     ▼       ▼       ▼
+  Docker  SSH/Ansible FileSystem
 ```
 
-### 完整流程（5 分钟部署测试网节点）
+## 快速开始
+
+### 环境要求
+
+- Python 3.10+
+- Docker & Docker Compose
+- Node.js 18+（Web UI 开发）
+
+### 安装
+
+```bash
+git clone https://github.com/HeliosLz/staker-agent.git
+cd staker-agent
+
+# Python 依赖
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+pip install -r web/backend/requirements.txt
+
+# 前端依赖
+cd web/frontend && npm install && cd ../..
+```
+
+### 方式一：CLI 部署
 
 ```bash
 # 1. 检查环境
 python3 cli.py init
 
-# 2. 安装 eth-docker
+# 2. 安装 Docker + eth-docker
 python3 cli.py setup
 
 # 3. 配置节点
@@ -42,134 +81,151 @@ python3 cli.py deploy
 python3 cli.py status
 ```
 
-详细使用指南请查看 [USAGE.md](USAGE.md)
-
-## 🧪 测试
-
-### 快速测试（30秒）
+### 方式二：Web UI 部署
 
 ```bash
-cd ~/staker-agent
-./test.sh
+# 启动后端 (端口 5001)
+python3 web/backend/app.py
+
+# 启动前端 (另一个终端, 端口 5173)
+cd web/frontend && npm run dev
 ```
 
-自动化测试脚本会验证所有核心功能。
+打开 http://localhost:5173/setup，按向导完成 5 步配置后点击"开始部署"。
 
-### 手动测试
-
-详细测试步骤请查看 [TESTING_GUIDE.md](TESTING_GUIDE.md)
+### 方式三：远程部署
 
 ```bash
-# 基础功能测试
-python3 cli.py init
-python3 cli.py configure --network holesky --client lighthouse
-python3 cli.py validate
-python3 cli.py status
+# 预检远程主机
+python3 cli.py remote-preflight user@your-server.com --ssh-key ~/.ssh/id_rsa
+
+# 远程部署
+python3 cli.py deploy \
+  --host user@your-server.com \
+  --ssh-key ~/.ssh/id_rsa \
+  --network holesky \
+  --client lighthouse
 ```
 
-**测试结果：** 16/16 测试通过 ✅
+## CLI 命令参考
 
-## 📋 命令列表
+| 命令 | 说明 | 关键选项 |
+|------|------|----------|
+| `init` | 环境检查 | — |
+| `setup` | 安装 Docker + eth-docker | `--skip-docker` |
+| `configure` | 配置网络与客户端 | `--network`, `--client`, `--fee-recipient`, `--withdrawal-address`, `-i` |
+| `keys generate` | 生成验证者密钥 | `--count`, `--network`, `--withdrawal-address` |
+| `keys list` | 查看已有密钥 | — |
+| `keys import` | 导入密钥 | `--keys-path` |
+| `deploy` | 部署节点（本地或远程） | `--host`, `--user`, `--port`, `--ssh-key`, `--network`, `--client` |
+| `status` | 查看节点状态 | `--detailed` |
+| `logs` | 查看日志 | `--service`, `-f` |
+| `start` / `stop` | 启动 / 停止节点 | — |
+| `validate` | 验证配置文件 | — |
+| `remote-preflight` | 远程主机预检 | `--user`, `--port`, `--ssh-key` |
 
-| 命令 | 说明 | 状态 |
+## Web API 端点
+
+| 方法 | 路径 | 说明 |
 |------|------|------|
-| `init` | 检查环境 | ✅ 完成 |
-| `validate` | 验证配置 | ✅ 完成 |
-| `setup` | 安装 Docker + eth-docker | ✅ 完成 |
-| `configure` | 配置网络和客户端 | ✅ 完成 |
-| `keys` | 管理验证者密钥 | ✅ 完成 |
-| `deploy` | 部署节点 | ✅ 完成 |
-| `status` | 查看节点状态 | ✅ 完成 |
-| `logs` | 查看日志 | ✅ 完成 |
-| `start/stop` | 启动/停止节点 | ✅ 完成 |
+| GET | `/api/env/check` | 环境检查 |
+| GET | `/api/config/networks` | 可用网络列表 |
+| GET | `/api/config/clients` | 可用客户端列表 |
+| POST | `/api/config/generate` | 生成 .env 配置 |
+| POST | `/api/deploy/full` | 一键全流程部署（通过 Socket.IO 推送进度） |
+| POST | `/api/deploy/start` | 启动部署 |
+| POST | `/api/deploy/keys/generate` | 生成验证者密钥 |
+| GET | `/api/status` | 节点状态 |
+| GET | `/api/jobs/:id` | 查询后台任务状态 |
 
-## 🎯 支持的配置
+**Socket.IO 事件：** `pipeline_progress`（逐步进度）、`pipeline_complete`（部署完成）
 
-### 网络
-- **mainnet** - 以太坊主网
-- **holesky** - Holesky 测试网（推荐测试）
-- **hoodi** - Lido CSM 测试网
-- **sepolia** - Sepolia 测试网
+## 项目结构
 
-### 客户端
-- **Lighthouse** - Rust 实现，推荐
-- **Prysm** - Go 实现
-- **Teku** - Java 实现
-- **Nimbus** - Nim 实现
+```
+staker-agent/
+├── cli.py                  # CLI 入口
+├── commands/               # CLI 子命令
+├── core/                   # 共享业务逻辑
+│   ├── config/             #   配置生成与验证
+│   ├── deploy/             #   部署编排
+│   ├── docker/             #   Docker / eth-docker 管理
+│   ├── keys/               #   验证者密钥管理
+│   ├── node/               #   节点状态监控
+│   ├── remote/             #   SSH 客户端 / Ansible / 远程部署
+│   └── system/             #   系统环境检查
+├── config/                 # 网络配置 (networks.yaml)
+├── ansible/                # Ansible playbooks & roles
+├── web/
+│   ├── backend/            # Flask + Socket.IO 后端
+│   │   ├── app.py          #   应用入口
+│   │   └── staker_backend/ #   路由 / 服务 / Schema / 仓库
+│   └── frontend/           # React + Vite + Tailwind 前端
+│       └── src/
+│           ├── pages/      #   Landing / SetupWizard / Dashboard / Terminal
+│           ├── components/ #   Setup 步骤组件
+│           ├── hooks/      #   usePipelineProgress
+│           └── services/   #   API 客户端 / Socket.IO
+└── tests/                  # 测试
+```
 
-所有客户端都使用 Geth 作为执行层客户端。
+## 系统要求
 
-## 💡 使用场景
+|  | 测试网 (Holesky / Sepolia) | 主网 (Mainnet) |
+|--|---------------------------|----------------|
+| 存储 | 100 GB+ | 2 TB+ SSD |
+| 内存 | 8 GB+ | 16 GB+ |
+| CPU | 2 核+ | 4 核+ |
 
-### 1. Holesky 测试网（新手）
+## 使用场景
+
+### Holesky 测试网（入门推荐）
+
 ```bash
 python3 cli.py configure --network holesky --client lighthouse
 python3 cli.py keys generate --count 1 --network holesky
 python3 cli.py deploy
 ```
 
-### 2. Lido CSM（社区质押）
+### Lido CSM 社区质押
+
 ```bash
-python3 cli.py configure --network hoodi --client lighthouse
-python3 cli.py keys generate --count 1 --network hoodi --withdrawal-address 0x...
+python3 cli.py configure --network holesky --client lighthouse \
+  --withdrawal-address 0x...
+python3 cli.py keys generate --count 1 --network holesky \
+  --withdrawal-address 0x...
 python3 cli.py deploy
 ```
 
-### 3. 主网部署（需要 32 ETH）
+### 主网部署（需要 32 ETH）
+
 ```bash
-python3 cli.py configure --network mainnet --client lighthouse
-python3 cli.py keys generate --count 1 --network mainnet --withdrawal-address 0x...
+python3 cli.py configure --network mainnet --client lighthouse \
+  --fee-recipient 0x... --withdrawal-address 0x...
+python3 cli.py keys generate --count 1 --network mainnet \
+  --withdrawal-address 0x...
 python3 cli.py deploy
 ```
 
-## 📊 系统要求
+## 安全提示
 
-### 测试网（Holesky / Hoodi）
-- 存储: 100GB+
-- 内存: 8GB+
-- CPU: 2核+
+- 妥善保管助记词（24 个单词），这是恢复密钥的唯一方式
+- 备份 keystore 文件和密码
+- 提款地址一旦设置无法更改
+- 主网部署前务必在测试网验证
+- 不要将 `.env`、密钥文件或 keystore 提交到版本控制
 
-### 主网（Mainnet）
-- 存储: 2TB+ SSD
-- 内存: 16GB+
-- CPU: 4核+
-
-## 🛠️ 开发状态
-
-**当前版本**: v0.1.0 (MVP)
-
-**完成度**: 100% ✅
-
-- ✅ 环境检测
-- ✅ 配置验证
-- ✅ 依赖安装
-- ✅ 配置生成
-- ✅ 密钥管理
-- ✅ 节点部署
-- ✅ 状态监控
-- ✅ 日志查看
-
-查看详细完成报告：[MVP_COMPLETE.md](MVP_COMPLETE.md)
-
-## 🔒 安全提示
-
-- ⚠️ 妥善保管助记词（24个单词）
-- ⚠️ 备份 keystore 文件和密码
-- ⚠️ 提款地址一旦设置无法更改
-- ⚠️ 主网部署前务必在测试网测试
-
-## 📚 相关资源
+## 相关资源
 
 - [eth-docker 文档](https://ethdocker.com)
 - [Ethereum Launchpad](https://launchpad.ethereum.org)
 - [Lido CSM](https://csm.lido.fi)
 - [EthStaker 社区](https://discord.gg/ethstaker)
 
-## 🤝 贡献
+## 贡献
 
-欢迎提交 Issue 和 Pull Request！
+欢迎提交 Issue 和 Pull Request。请遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范（`feat:`, `fix:`, `chore:`）。
 
-## 📄 License
+## License
 
-Apache License v2
-
+Apache License 2.0
