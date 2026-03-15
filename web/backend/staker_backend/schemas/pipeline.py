@@ -12,4 +12,5 @@ class FullDeploySchema(Schema):
     num_validators = fields.Integer(load_default=1)
     use_lido_csm = fields.Boolean(load_default=False)
     skip_keys = fields.Boolean(load_default=False)
+    keystore_password = fields.String(load_default=None)
     remote = fields.Dict(load_default=None)

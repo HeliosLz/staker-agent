@@ -73,14 +73,22 @@ def full_deploy() -> object:
                     num_validators=data.get("num_validators", 1),
                     use_lido_csm=data.get("use_lido_csm", False),
                     skip_keys=data.get("skip_keys", False),
+                    keystore_password=data.get("keystore_password"),
                     progress=cb,
                 )
 
     def on_success(job, result):
         with app.app_context():
+            # Extract mnemonic from keys result (if generated)
+            mnemonic = None
+            if isinstance(result, dict):
+                keys = result.get("keys")
+                if isinstance(keys, dict):
+                    mnemonic = keys.pop("mnemonic", None)
             socketio.emit("pipeline_complete", {
                 "job_id": job.id,
                 "success": True,
+                "mnemonic": mnemonic,
                 "result": result if isinstance(result, dict) else {},
             })
 

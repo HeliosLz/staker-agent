@@ -15,6 +15,7 @@ export interface PipelineState {
   completed: boolean;
   success: boolean;
   error: string | null;
+  mnemonic: string | null;
 }
 
 const initialState: PipelineState = {
@@ -23,6 +24,7 @@ const initialState: PipelineState = {
   completed: false,
   success: false,
   error: null,
+  mnemonic: null,
 };
 
 export interface PipelineConfig {
@@ -33,6 +35,7 @@ export interface PipelineConfig {
   num_validators?: number;
   use_lido_csm?: boolean;
   skip_keys?: boolean;
+  keystore_password?: string;
   remote?: { host: string; user?: string; port?: number; ssh_key?: string } | null;
 }
 
@@ -51,7 +54,6 @@ export function usePipelineProgress() {
       message: string;
     }) => {
       setState(prev => {
-        // Build a map from existing steps for O(1) lookup
         const stepMap = new Map(prev.steps.map(s => [s.step, s]));
         stepMap.set(data.step, {
           step: data.step,
@@ -60,14 +62,12 @@ export function usePipelineProgress() {
           message: data.message,
         });
 
-        // Fill pending placeholders for steps not yet seen
         for (let i = 1; i <= data.total; i++) {
           if (!stepMap.has(i)) {
             stepMap.set(i, { step: i, name: `步骤 ${i}`, status: 'pending', message: '' });
           }
         }
 
-        // Build sorted array once
         const steps = Array.from(stepMap.values()).sort((a, b) => a.step - b.step);
         return { ...prev, jobId: data.job_id, steps };
       });
@@ -76,6 +76,7 @@ export function usePipelineProgress() {
     socket.on('pipeline_complete', (data: {
       job_id: string;
       success: boolean;
+      mnemonic?: string;
       result?: any;
       error?: string;
     }) => {
@@ -85,6 +86,7 @@ export function usePipelineProgress() {
         completed: true,
         success: data.success,
         error: data.error || null,
+        mnemonic: data.mnemonic || null,
       }));
     });
 

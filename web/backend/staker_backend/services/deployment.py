@@ -24,7 +24,7 @@ class DeploymentService:
         deployer = DeployManager()
         return bool(deployer.deploy())
 
-    def generate_keys(self, *, network: str, num_validators: int, withdrawal_address: str | None, use_lido_csm: bool) -> Dict[str, Any]:
+    def generate_keys(self, *, network: str, num_validators: int, withdrawal_address: str | None, use_lido_csm: bool, keystore_password: str | None = None) -> Dict[str, Any]:
         if network not in VALID_NETWORKS:
             raise ValueError(f"Invalid network '{network}'. Must be one of: {', '.join(VALID_NETWORKS)}")
         if use_lido_csm and network not in LIDO_CSM_NETWORKS:
@@ -36,6 +36,7 @@ class DeploymentService:
             num_validators=num_validators,
             withdrawal_address=withdrawal_address,
             use_lido_csm=use_lido_csm,
+            keystore_password=keystore_password,
         )
 
     def import_keys(self, keys_path: str) -> bool:

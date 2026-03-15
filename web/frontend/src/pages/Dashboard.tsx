@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Activity, Clock, HardDrive, Network, Play, Square, RotateCw,
-  CircleDot, AlertTriangle, RefreshCw, Server,
+  CircleDot, AlertTriangle, RefreshCw, Server, Info,
 } from 'lucide-react';
 import { statusAPI } from '../services/api';
 
@@ -62,12 +62,17 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [logService, setLogService] = useState<string>('consensus');
+  const logEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadStatus();
-    const interval = setInterval(loadStatus, 10000);
-    return () => clearInterval(interval);
-  }, []);
+    loadLogs();
+    const statusInterval = setInterval(loadStatus, 10000);
+    const logInterval = setInterval(loadLogs, 5000);
+    return () => { clearInterval(statusInterval); clearInterval(logInterval); };
+  }, [logService]);
 
   const loadStatus = async () => {
     try {
@@ -78,6 +83,17 @@ export default function Dashboard() {
       setLastRefresh(new Date());
     } catch {
       setError('无法连接到后端');
+    }
+  };
+
+  const loadLogs = async () => {
+    try {
+      const res = await statusAPI.getLogs(logService, 30);
+      const text = res.data?.data?.logs || '';
+      setLogs(text.split('\n').filter((l: string) => l.trim()));
+      setTimeout(() => logEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    } catch {
+      // silent — logs are optional
     }
   };
 
@@ -222,8 +238,31 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Status explanation for beginners */}
+      {anyRestarting && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex gap-3">
+          <Info className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-amber-800">
+            <p className="font-medium mb-1">节点正在同步中</p>
+            <p className="text-amber-700">
+              首次启动时，执行层（Geth）和共识层（Lighthouse）需要从网络下载历史数据。
+              这个过程通常需要几小时到一天，取决于网络带宽和磁盘速度。
+              同步期间容器会反复重启，这是正常现象。
+            </p>
+          </div>
+        </div>
+      )}
+      {allRunning && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex gap-3">
+          <Info className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-green-800">
+            <p className="font-medium">节点运行正常</p>
+          </div>
+        </div>
+      )}
+
       {/* Container table */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <h2 className="font-semibold text-gray-900 mb-4">Containers</h2>
         {containers.length === 0 ? (
           <p className="text-gray-400 text-sm py-8 text-center">暂无运行中的容器</p>
@@ -258,6 +297,40 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Live logs */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-gray-900">实时日志</h2>
+          <div className="flex gap-1">
+            {['execution', 'consensus', 'validator'].map(svc => (
+              <button
+                key={svc}
+                onClick={() => setLogService(svc)}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                  logService === svc
+                    ? 'bg-pink-100 text-pink-700'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+              >
+                {svc === 'execution' ? '执行层' : svc === 'consensus' ? '共识层' : '验证者'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="bg-gray-900 rounded-xl p-4 h-64 overflow-y-auto font-mono text-xs leading-relaxed">
+          {logs.length === 0 ? (
+            <p className="text-gray-500">暂无日志</p>
+          ) : (
+            logs.map((line, i) => (
+              <div key={i} className={`${line.includes('ERROR') || line.includes('error') ? 'text-red-400' : line.includes('WARN') ? 'text-yellow-400' : 'text-green-400'}`}>
+                {line}
+              </div>
+            ))
+          )}
+          <div ref={logEndRef} />
+        </div>
       </div>
     </div>
   );

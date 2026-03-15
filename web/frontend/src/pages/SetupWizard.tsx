@@ -44,20 +44,26 @@ export default function SetupWizard() {
   const [validatorCount, setValidatorCount] = useState<number>(1);
   const [useLidoCSM, setUseLidoCSM] = useState<boolean>(false);
   const [lidoCsmInfo, setLidoCsmInfo] = useState<any>(null);
+  const [keystorePassword, setKeystorePassword] = useState<string>('');
+  const [showMnemonic, setShowMnemonic] = useState(false);
 
   // Pipeline hook
   const pipeline = usePipelineProgress();
 
-  // Redirect to dashboard on pipeline success
+  // Show mnemonic or redirect on pipeline success
   useEffect(() => {
     if (pipeline.completed && pipeline.success) {
-      const timer = setTimeout(() => navigate('/dashboard'), 3000);
-      return () => clearTimeout(timer);
+      if (pipeline.mnemonic) {
+        setShowMnemonic(true);
+      } else {
+        const timer = setTimeout(() => navigate('/dashboard'), 3000);
+        return () => clearTimeout(timer);
+      }
     }
     if (pipeline.completed && !pipeline.success && pipeline.error) {
       setError(pipeline.error);
     }
-  }, [pipeline.completed, pipeline.success, pipeline.error, navigate]);
+  }, [pipeline.completed, pipeline.success, pipeline.error, pipeline.mnemonic, navigate]);
 
   useEffect(() => {
     if (useLidoCSM && selectedNetwork) {
@@ -151,6 +157,7 @@ export default function SetupWizard() {
       withdrawal_address: withdrawalAddress || undefined,
       num_validators: validatorCount,
       use_lido_csm: useLidoCSM,
+      keystore_password: keystorePassword || undefined,
     });
 
     // loading state is now driven by pipeline.completed
@@ -197,6 +204,8 @@ export default function SetupWizard() {
             useLidoCSM={useLidoCSM}
             setUseLidoCSM={setUseLidoCSM}
             lidoCsmInfo={lidoCsmInfo}
+            keystorePassword={keystorePassword}
+            setKeystorePassword={setKeystorePassword}
           />
         );
       case 5:
@@ -226,10 +235,12 @@ export default function SetupWizard() {
       case 1: return envPassed;
       case 2: return selectedNetwork !== '';
       case 3: return selectedClient !== '';
-      case 4:
+      case 4: {
+        if (keystorePassword.length < 12) return false;
         if (useLidoCSM) return true;
-        if (!withdrawalAddress) return false;
+        if (!withdrawalAddress) return true;
         return withdrawalAddress.startsWith('0x') && withdrawalAddress.length === 42;
+      }
       case 5: return true;
       default: return false;
     }
@@ -297,6 +308,37 @@ export default function SetupWizard() {
           </button>
         </div>
       </div>
+
+      {/* Mnemonic Modal */}
+      {showMnemonic && pipeline.mnemonic && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-8 shadow-2xl">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">请备份您的助记词</h3>
+            <p className="text-sm text-red-600 mb-4">
+              这是恢复密钥的唯一方式。请将助记词抄写在纸上并妥善保管，关闭后将无法再次查看。
+            </p>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+              <div className="grid grid-cols-4 gap-2">
+                {pipeline.mnemonic.split(' ').map((word, i) => (
+                  <div key={i} className="bg-white border border-yellow-300 rounded-lg px-2 py-1.5 text-center">
+                    <span className="text-xs text-gray-400 mr-1">{i + 1}.</span>
+                    <span className="font-mono text-sm font-medium text-gray-900">{word}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowMnemonic(false);
+                navigate('/dashboard');
+              }}
+              className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors"
+            >
+              我已安全备份，进入控制面板
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

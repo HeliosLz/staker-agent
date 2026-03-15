@@ -8,6 +8,8 @@ interface KeyGenerationProps {
   useLidoCSM: boolean;
   setUseLidoCSM: (use: boolean) => void;
   lidoCsmInfo: any;
+  keystorePassword: string;
+  setKeystorePassword: (pw: string) => void;
 }
 
 export default function KeyGeneration({
@@ -18,6 +20,8 @@ export default function KeyGeneration({
   useLidoCSM,
   setUseLidoCSM,
   lidoCsmInfo,
+  keystorePassword,
+  setKeystorePassword,
 }: KeyGenerationProps) {
   return (
     <div className="space-y-6">
@@ -104,6 +108,23 @@ export default function KeyGeneration({
             {useLidoCSM
               ? '使用 Lido CSM 时，提款地址由 Lido 协议管理'
               : '验证者的提款地址，无法更改'}
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-2 text-gray-700">
+            Keystore 密码
+            <span className="ml-1 text-xs text-gray-400">(至少 12 位)</span>
+          </label>
+          <input
+            type="password"
+            placeholder="设置密钥库密码"
+            value={keystorePassword}
+            onChange={(e) => setKeystorePassword(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            此密码用于加密 keystore 文件，部署验证者时需要再次输入
           </p>
         </div>
 
