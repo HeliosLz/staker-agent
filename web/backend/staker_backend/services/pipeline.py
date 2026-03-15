@@ -86,19 +86,23 @@ class PipelineService:
         result["configuration"] = config_result
         _progress(3, LOCAL_STEPS[2][1], "done", "配置文件已生成")
 
-        # Step 4 – generate validator keys
-        if skip_keys:
-            _progress(4, LOCAL_STEPS[3][1], "done", "跳过密钥生成")
+        # Step 4 – validator keys
+        # deposit-cli requires an interactive TTY (getpass) and cannot run
+        # from a web backend thread.  Auto-detect existing keys instead.
+        import os
+        keys_dir = os.path.expanduser("~/eth-docker/.eth/validator_keys")
+        has_keys = os.path.isdir(keys_dir) and any(
+            f.startswith("keystore") for f in os.listdir(keys_dir)
+        )
+        if skip_keys or has_keys:
+            msg = "已检测到现有密钥，跳过生成" if has_keys else "跳过密钥生成"
+            _progress(4, LOCAL_STEPS[3][1], "done", msg)
         else:
-            _progress(4, LOCAL_STEPS[3][1], "running", LOCAL_STEPS[3][2])
-            keys_result = self._c.deployment.generate_keys(
-                network=network,
-                num_validators=num_validators,
-                withdrawal_address=withdrawal_address,
-                use_lido_csm=use_lido_csm,
+            _progress(4, LOCAL_STEPS[3][1], "failed",
+                      "未找到密钥，请先在终端运行: python3 cli.py keys generate")
+            raise RuntimeError(
+                "No validator keys found. Run 'python3 cli.py keys generate' first."
             )
-            result["keys"] = keys_result
-            _progress(4, LOCAL_STEPS[3][1], "done", "密钥已生成")
 
         # Step 5 – deploy (docker compose up)
         _progress(5, LOCAL_STEPS[4][1], "running", LOCAL_STEPS[4][2])

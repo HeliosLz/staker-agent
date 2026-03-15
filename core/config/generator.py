@@ -11,7 +11,7 @@ console = Console()
 class ConfigGenerator:
     def __init__(self, eth_docker_path=None):
         self.eth_docker_path = eth_docker_path or os.path.expanduser('~/eth-docker')
-        self.config_path = Path(__file__).parent.parent / 'config' / 'networks.yaml'
+        self.config_path = Path(__file__).parent.parent.parent / 'config' / 'networks.yaml'
 
         with open(self.config_path, 'r') as f:
             self.config = yaml.safe_load(f)

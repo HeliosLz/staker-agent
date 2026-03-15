@@ -22,7 +22,7 @@ class DeploymentService:
 
     def start(self) -> bool:
         deployer = DeployManager()
-        return bool(deployer.deploy(skip_confirm=True))
+        return bool(deployer.deploy())
 
     def generate_keys(self, *, network: str, num_validators: int, withdrawal_address: str | None, use_lido_csm: bool) -> Dict[str, Any]:
         if network not in VALID_NETWORKS:

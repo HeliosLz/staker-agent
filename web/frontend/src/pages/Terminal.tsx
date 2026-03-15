@@ -63,12 +63,12 @@ export default function Terminal() {
   const quickCommands = ['status', 'logs', 'restart', 'stop'];
 
   return (
-    <div className="min-h-screen bg-gray-900 p-8">
-      <div className="container mx-auto max-w-6xl">
+    <div className="p-8 max-w-6xl mx-auto">
+      <div>
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <TerminalIcon className="w-8 h-8 text-green-400" />
-          <h1 className="text-2xl font-bold text-white">Staker Agent Terminal</h1>
+          <TerminalIcon className="w-7 h-7 text-gray-700" />
+          <h1 className="text-2xl font-bold text-gray-900">Terminal</h1>
         </div>
 
         {/* Terminal Window */}
@@ -129,8 +129,8 @@ export default function Terminal() {
         </div>
 
         {/* Info */}
-        <div className="mt-6 text-gray-400 text-sm">
-          <p>💡 Tip: You can also use the CLI directly: <code className="text-green-400 bg-gray-800 px-2 py-1 rounded">python3 cli.py [command]</code></p>
+        <div className="mt-6 text-gray-500 text-sm">
+          <p>Tip: You can also use the CLI directly: <code className="text-pink-600 bg-gray-100 px-2 py-1 rounded">python3 cli.py [command]</code></p>
         </div>
       </div>
     </div>

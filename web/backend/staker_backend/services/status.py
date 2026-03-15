@@ -15,7 +15,7 @@ class StatusService:
 
     def get_status(self) -> Dict[str, Any]:
         monitor = StatusMonitor()
-        return monitor.get_status()
+        return monitor.get_container_status()
 
     def fetch_logs(self, service: str, lines: str) -> Dict[str, Any]:
         try:
