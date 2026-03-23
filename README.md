@@ -190,26 +190,6 @@ staker-agent/
 │           └── hooks/         #     useAgentChat / useHealthMonitor
 └── config/                    # networks.yaml
 ```
-
-## Agent 设计模式
-
-基于 [learn.shareai.run](https://learn.shareai.run/en/) 课程的 Agent 架构模式：
-
-| 模式 | 课程 | 应用位置 | 作用 |
-|------|------|---------|------|
-| Agent Loop | s01 | `services/agent.py` | while True + tools + stop_reason |
-| Tool Dispatch | s02 | `core/agent/tools.py` | 统一 dispatch map，加工具不改循环 |
-| TodoWrite | s03 | `core/agent/todo.py` | 多步操作前先规划，防止 LLM 丢失进度 |
-| Skills | s05 | `core/agent/skills/` | 质押/CSM/排障知识按需加载 |
-| Compact | s06 | `services/agent.py` | micro-compact 压缩旧 tool results |
-| Background Notifications | s08 | `services/agent.py` | drain monitor 事件到 LLM 上下文 |
-| Autonomous Agent | s11 | `core/agent/monitor.py` | 规则驱动的自治监控循环 |
-
-**未使用的模式及原因：**
-- **s04 Subagents** — 当前是单 Agent，暂不需要子任务委派
-- **s07 Task Graph** — 部署是单次操作，不需要磁盘持久化的 DAG 依赖图
-- **s09 Agent Teams** — 单 Agent，无需多 Agent 协作（未来 DVT 集成时可能启用）
-
 ## 配置
 
 | 变量 | 默认值 | 说明 |
@@ -247,7 +227,6 @@ staker-agent/
 - [eth-docker](https://ethdocker.com)
 - [Ethereum Launchpad](https://launchpad.ethereum.org)
 - [Lido CSM](https://csm.lido.fi)
-- [Agent 架构模式](https://learn.shareai.run/en/)
 - [EthStaker 社区](https://discord.gg/ethstaker)
 
 ## License
