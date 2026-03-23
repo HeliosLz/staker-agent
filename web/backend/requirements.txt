@@ -7,3 +7,6 @@ eventlet==0.33.3
 PyYAML==6.0.1
 python-json-logger==2.0.7
 marshmallow==3.20.1
+openai>=1.0.0,<3.0.0
+pexpect>=4.8.0
+python-telegram-bot>=21.0

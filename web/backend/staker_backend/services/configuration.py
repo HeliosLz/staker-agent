@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, List
 
 from core.config.generator import ConfigGenerator
 
-VALID_NETWORKS = ["mainnet", "hoodi", "holesky", "sepolia"]
-VALID_CLIENTS = ["lighthouse", "prysm", "teku", "nimbus"]
+from ..constants import VALID_NETWORKS, VALID_CLIENTS
 
 if TYPE_CHECKING:
     from ..repositories.filesystem import FileRepository

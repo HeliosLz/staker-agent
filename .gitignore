@@ -62,3 +62,9 @@ eth-docker/
 # Temporary files
 *.tmp
 .cache/
+
+# Local dev artifacts
+.venv/
+*.patch
+*.diff
+rewrite_imports.py
