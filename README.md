@@ -47,7 +47,7 @@
 
 **Monitor Loop** — 确定性规则引擎，不依赖 LLM，24/7 可靠运行。自动重启崩溃容器，超过 N 次失败后升级给人。
 
-**Chat Loop** — LLM 驱动（OpenRouter），支持自然语言交互。每次调用前自动注入 Monitor 事件（s08 模式），压缩旧上下文（s06 模式）。多步操作（如部署）通过 TodoWrite（s03 模式）跟踪进度，防止长对话中丢失步骤。
+**Chat Loop** — LLM 驱动（OpenRouter），支持自然语言交互。每次调用前自动注入 Monitor 事件，压缩旧上下文。多步操作（如部署）通过 TodoWrite 跟踪进度，防止长对话中丢失步骤。
 
 ## 快速开始
 
@@ -164,7 +164,7 @@ staker-agent/
 │   ├── agent/                 #   自主 Agent 核心
 │   │   ├── tools.py           #     统一工具注册表（12 个工具）
 │   │   ├── state.py           #     共享状态（告警、操作日志）
-│   │   ├── todo.py            #     s03: 多步任务追踪
+│   │   ├── todo.py            #     Todo: 多步任务追踪
 │   │   ├── monitor.py         #     Monitor Loop（规则引擎）
 │   │   ├── notifier.py        #     事件格式化
 │   │   └── skills/            #     按需知识包
@@ -231,4 +231,4 @@ staker-agent/
 
 ## License
 
-Apache License 2.0
+MIT
