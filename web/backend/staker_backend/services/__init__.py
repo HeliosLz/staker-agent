@@ -50,7 +50,7 @@ def init_services(app: Flask, repositories: RepositoryContainer) -> ServiceConta
     from .agent import SYSTEM_PROMPT, OPENROUTER_BASE_URL
 
     agent_state = AgentState()
-    notif_queue: Queue = Queue()
+    notif_queue: Queue = Queue(maxsize=200)
 
     memory_dir = os.path.expanduser("~/.staker-agent/memory")
     memory_store = MemoryStore(memory_dir)

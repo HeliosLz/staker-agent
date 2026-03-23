@@ -9,7 +9,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass, field
-from queue import Queue
+from queue import Full, Queue
 from typing import Any, Callable, Dict, List, Optional
 
 from core.agent.notifier import format_event
@@ -18,6 +18,9 @@ from core.agent.tools import ToolContext, execute
 from core.monitor.health import HealthLevel, HealthMonitor, HealthReport
 
 logger = logging.getLogger(__name__)
+
+_SINK_MAX_RETRIES = 3
+_SINK_BASE_DELAY = 1.0  # seconds; retries at 1s, 2s, 4s
 
 
 @dataclass
@@ -180,7 +183,18 @@ class MonitorLoop:
             **extra,
         }
         # s08: push to notification queue for Chat Loop to drain
-        self.notif_queue.put(event)
+        try:
+            self.notif_queue.put_nowait(event)
+        except Full:
+            # Queue at capacity — drop oldest event to make room
+            try:
+                self.notif_queue.get_nowait()
+            except Exception:
+                pass
+            try:
+                self.notif_queue.put_nowait(event)
+            except Full:
+                pass
         # Persist incident to memory store
         if self._memory_store:
             try:
@@ -191,13 +205,20 @@ class MonitorLoop:
                 self._memory_store.save("incidents", key, content)
             except Exception:
                 logger.debug("Memory incident recording failed", exc_info=True)
-        # Push to registered sinks (Telegram, etc.)
+        # Push to registered sinks (Telegram, etc.) with exponential backoff
         formatted = format_event(event)
         for sink in self._sinks:
-            try:
-                sink(formatted)
-            except Exception:
-                logger.warning("Notification sink failed", exc_info=True)
+            for attempt in range(_SINK_MAX_RETRIES):
+                try:
+                    sink(formatted)
+                    break
+                except Exception:
+                    if attempt == _SINK_MAX_RETRIES - 1:
+                        logger.warning("Notification sink failed after %d attempts", _SINK_MAX_RETRIES, exc_info=True)
+                    else:
+                        delay = _SINK_BASE_DELAY * (2 ** attempt)
+                        logger.debug("Notification sink failed, retry in %.1fs...", delay)
+                        time.sleep(delay)
 
     def _push_ws(self, report: HealthReport) -> None:
         if self._socketio and self._flask_app:
