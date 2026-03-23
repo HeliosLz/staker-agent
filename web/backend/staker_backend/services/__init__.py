@@ -44,8 +44,26 @@ def init_services(app: Flask, repositories: RepositoryContainer) -> ServiceConta
     from core.agent.monitor import MonitorLoop, MonitorConfig
     from core.node.status import StatusMonitor
 
+    # Phase 3: Memory + Composer
+    from core.agent.memory import MemoryStore
+    from core.agent.composer import MessageComposer
+    from .agent import SYSTEM_PROMPT
+
     agent_state = AgentState()
     notif_queue: Queue = Queue()
+
+    memory_dir = os.path.expanduser("~/.staker-agent/memory")
+    memory_store = MemoryStore(memory_dir)
+
+    composer = MessageComposer(SYSTEM_PROMPT)
+
+    def _memory_injector(system: str) -> str:
+        ctx = memory_store.get_context()
+        if ctx:
+            return system + f"\n\n## Memory\n{ctx}"
+        return system
+
+    composer.add_system_injector(_memory_injector)
 
     monitor_enabled = os.getenv("MONITOR_ENABLED", "true").lower() in ("1", "true", "yes")
     monitor_loop = None
@@ -68,6 +86,7 @@ def init_services(app: Flask, repositories: RepositoryContainer) -> ServiceConta
             },
         )
         monitor_loop = MonitorLoop(ctx, notif_queue, config)
+        monitor_loop.set_memory_store(memory_store)
 
     container = ServiceContainer(
         environment=environment,
@@ -80,6 +99,8 @@ def init_services(app: Flask, repositories: RepositoryContainer) -> ServiceConta
         agent_state=agent_state,
         monitor_loop=monitor_loop,
         notif_queue=notif_queue,
+        memory_store=memory_store,
+        message_composer=composer,
     )
 
     app.extensions["services"] = container

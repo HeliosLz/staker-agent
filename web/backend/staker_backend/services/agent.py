@@ -88,6 +88,13 @@ SYSTEM_PROMPT = """\
 这是 Monitor 最近检测到的事件，请参考这些信息回答用户问题。
 如果 Monitor 已经自动重启了服务，向用户解释发生了什么，不要重复操作。
 
+## 记忆功能
+- remember: 保存重要信息（用户偏好、操作笔记）到持久化存储
+- recall: 检索历史记忆
+
+当用户告诉你偏好（如网络、客户端选择）时，主动用 remember 保存。
+下次对话你会在 Memory 部分看到之前保存的信息。
+
 ## 错误处理
 - 如果某步骤失败，直接重试该工具一次（系统会自动清理残留状态）
 - 不要让用户手动执行 shell 命令来解决问题，你应该通过重新调用工具来自动修复
@@ -217,6 +224,7 @@ def _build_tool_context(services: ServiceContainer, session: _Session) -> ToolCo
         state=agent_state,
         status_monitor=status_monitor,
         todo=session.todo,
+        memory=services.memory_store,
     )
 
 
@@ -274,6 +282,7 @@ def run_agent_turn_cb(
 
     session = _get_session(session_id)
     ctx = _build_tool_context(services, session)
+    composer = services.message_composer
 
     with session.lock:
         if session.busy:
@@ -324,7 +333,11 @@ def run_agent_turn_cb(
                 _micro_compact(session.history)
                 history_snapshot = list(session.history)
 
-            messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history_snapshot
+            if composer:
+                messages = composer.compose(history_snapshot)
+            else:
+                logger.warning("MessageComposer not available, memory injection skipped")
+                messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history_snapshot
 
             # Retry loop for stream creation only.
             # Consumption is NOT retried: text deltas already sent to the UI

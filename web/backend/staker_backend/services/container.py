@@ -29,3 +29,6 @@ class ServiceContainer:
     agent_state: Any = None             # core.agent.state.AgentState
     monitor_loop: Any = None            # core.agent.monitor.MonitorLoop | None
     notif_queue: Queue = field(default_factory=Queue)
+    # Phase 3: Memory + Composer
+    memory_store: Any = None            # core.agent.memory.MemoryStore
+    message_composer: Any = None        # core.agent.composer.MessageComposer

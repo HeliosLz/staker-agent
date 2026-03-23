@@ -48,12 +48,16 @@ class MonitorLoop:
         self._sinks: List[Callable[[str], None]] = []
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        self._memory_store: Any = None  # MemoryStore — set via DI
         # WebSocket push (set after Flask init)
         self._socketio: Any = None
         self._flask_app: Any = None
 
     def add_sink(self, sink: Callable[[str], None]) -> None:
         self._sinks.append(sink)
+
+    def set_memory_store(self, memory_store: Any) -> None:
+        self._memory_store = memory_store
 
     def set_socketio(self, socketio: Any, app: Any) -> None:
         self._socketio = socketio
@@ -177,6 +181,16 @@ class MonitorLoop:
         }
         # s08: push to notification queue for Chat Loop to drain
         self.notif_queue.put(event)
+        # Persist incident to memory store
+        if self._memory_store:
+            try:
+                key = f"{event_type}_{check.name}"
+                content = check.message
+                if check.level.value:
+                    content = f"[{check.level.value}] {content}"
+                self._memory_store.save("incidents", key, content)
+            except Exception:
+                logger.debug("Memory incident recording failed", exc_info=True)
         # Push to registered sinks (Telegram, etc.)
         formatted = format_event(event)
         for sink in self._sinks:
