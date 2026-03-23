@@ -34,6 +34,7 @@ class ToolContext:
     state: Any = None          # AgentState — set after Step 2
     status_monitor: Any = None # StatusMonitor — set after Step 2
     todo: Any = None           # TodoManager — set per-session (s03)
+    memory: Any = None         # MemoryStore — set by DI
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +176,33 @@ def handle_todo(tool_input: Dict[str, Any], ctx: ToolContext) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Memory tool handlers
+# ---------------------------------------------------------------------------
+
+def handle_remember(tool_input: Dict[str, Any], ctx: ToolContext) -> Dict[str, Any]:
+    """Save a memory entry."""
+    if not ctx.memory:
+        return {"success": False, "error": "MemoryStore not available"}
+    ctx.memory.save(
+        category=tool_input.get("category", "notes"),
+        key=tool_input.get("key", ""),
+        content=tool_input["content"],
+    )
+    return {"success": True, "message": "已记住"}
+
+
+def handle_recall(tool_input: Dict[str, Any], ctx: ToolContext) -> Dict[str, Any]:
+    """Retrieve memories by query and/or category."""
+    if not ctx.memory:
+        return {"success": False, "error": "MemoryStore not available"}
+    results = ctx.memory.recall(
+        query=tool_input.get("query", ""),
+        category=tool_input.get("category", ""),
+    )
+    return {"success": True, "memories": results}
+
+
+# ---------------------------------------------------------------------------
 # Dispatch map — add a tool by adding one entry here
 # ---------------------------------------------------------------------------
 
@@ -195,6 +223,9 @@ TOOL_HANDLERS: Dict[str, HandlerFn] = {
     "load_skill":          handle_load_skill,
     # Planning (s03)
     "todo":                handle_todo,
+    # Memory
+    "remember":            handle_remember,
+    "recall":              handle_recall,
 }
 
 
@@ -357,6 +388,55 @@ TOOL_DEFINITIONS = [
                     },
                 },
                 "required": ["name"],
+            },
+        },
+    },
+    # --- Memory ---
+    {
+        "type": "function",
+        "function": {
+            "name": "remember",
+            "description": "保存重要信息到持久化记忆（用户偏好、操作笔记等）。重启后仍可recall。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "enum": ["preferences", "notes"],
+                        "description": "记忆分类。preferences=用户偏好/设置，notes=运维笔记/重要信息",
+                    },
+                    "key": {
+                        "type": "string",
+                        "description": "记忆标识（如 'network', 'client', 'vpn_config'）",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "要记住的内容",
+                    },
+                },
+                "required": ["content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "recall",
+            "description": "检索之前保存的记忆。可按分类筛选或关键词搜索。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "搜索关键词（可选）",
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": ["preferences", "incidents", "notes"],
+                        "description": "按分类筛选（可选）",
+                    },
+                },
+                "required": [],
             },
         },
     },

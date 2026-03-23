@@ -27,6 +27,8 @@ TOOL_LABELS = {
     "restart_service": "重启服务",
     "load_skill": "加载知识",
     "todo": "更新任务",
+    "remember": "保存记忆",
+    "recall": "检索记忆",
 }
 
 
