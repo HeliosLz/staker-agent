@@ -100,18 +100,31 @@ class DeployManager:
             raise DockerExecutionError("docker compose pull", str(e))
 
     def _start_services(self):
-        """Start Docker services"""
+        """Start Docker services, auto-cleaning orphans and stale networks."""
         try:
             result = subprocess.run(
-                ['docker', 'compose', 'up', '-d'],
+                ['docker', 'compose', 'up', '-d', '--remove-orphans'],
                 cwd=self.eth_docker_path,
                 capture_output=True,
                 text=True,
-                shell=False
+                shell=False,
             )
 
             if result.returncode != 0:
-                raise DockerExecutionError("docker compose up -d", result.stderr)
+                # Retry: network conflict or orphan containers — tear down first
+                if 'network' in result.stderr.lower() or 'orphan' in result.stderr.lower():
+                    subprocess.run(
+                        ['docker', 'compose', 'down', '--remove-orphans'],
+                        cwd=self.eth_docker_path,
+                        capture_output=True, text=True, timeout=60,
+                    )
+                    result = subprocess.run(
+                        ['docker', 'compose', 'up', '-d', '--remove-orphans'],
+                        cwd=self.eth_docker_path,
+                        capture_output=True, text=True,
+                    )
+                if result.returncode != 0:
+                    raise DockerExecutionError("docker compose up -d", result.stderr)
 
         except Exception as e:
             if isinstance(e, DockerExecutionError):

@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Landing from './pages/Landing';
-import SetupWizard from './pages/SetupWizard';
+import ChatSetup from './pages/ChatSetup';
 import Dashboard from './pages/Dashboard';
 import Terminal from './pages/Terminal';
 import AppLayout from './components/layout/AppLayout';
@@ -10,7 +10,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/setup" element={<SetupWizard />} />
+        <Route path="/setup" element={<ChatSetup />} />
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/terminal" element={<Terminal />} />

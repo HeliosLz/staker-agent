@@ -12,13 +12,14 @@ from core.exceptions import KeyGenerationError, UserCancelledError
 
 logger = logging.getLogger(__name__)
 
-# Lido CSM withdrawal vaults (official addresses)
-LIDO_WITHDRAWAL_VAULT_MAINNET = "0xb9d7934878b5fb9610b3fe8a5e441e8fad7e293f"
-LIDO_EL_REWARDS_VAULT_MAINNET = "0x388C818CA8B9251b393131C08a736A67ccB19297"
-LIDO_WITHDRAWAL_VAULT_HOODI = "0x4473dCDDbf77679A643BdB654dbd86D67F8d32f2"
-LIDO_EL_REWARDS_VAULT_HOODI = "0x9b108015fe433F173696Af3Aa0CF7CDb3E104258"
-LIDO_WITHDRAWAL_VAULT_HOLESKY = "0xF0179dEC45a37423EAD4FaD5fCb136197872EAd9"
-LIDO_EL_REWARDS_VAULT_HOLESKY = "0xE73a3602b99f1f913e72F8bdcBC235e206794Ac8"
+# Lido CSM withdrawal vault addresses keyed by network.
+# Canonical source: web/backend/staker_backend/constants.py (LIDO_CSM_ADDRESSES).
+# Duplicated here to keep core/ free of web-backend imports.
+_LIDO_WITHDRAWAL_VAULTS = {
+    "mainnet": "0xb9d7934878b5fb9610b3fe8a5e441e8fad7e293f",
+    "hoodi": "0x4473dCDDbf77679A643BdB654dbd86D67F8d32f2",
+    "holesky": "0xF0179dEC45a37423EAD4FaD5fCb136197872EAd9",
+}
 
 
 def _eip55_checksum(address: str) -> str:
@@ -69,14 +70,10 @@ class KeyManager:
 
         # Determine withdrawal address
         if use_lido_csm:
-            if network == 'mainnet':
-                withdrawal_address = LIDO_WITHDRAWAL_VAULT_MAINNET
-            elif network == 'hoodi':
-                withdrawal_address = LIDO_WITHDRAWAL_VAULT_HOODI
-            elif network == 'holesky':
-                withdrawal_address = LIDO_WITHDRAWAL_VAULT_HOLESKY
-            else:
+            vault = _LIDO_WITHDRAWAL_VAULTS.get(network)
+            if not vault:
                 raise KeyGenerationError(f'Lido CSM not available on {network}')
+            withdrawal_address = vault
 
         # Docker availability check
         try:
@@ -109,13 +106,54 @@ class KeyManager:
             )
 
     # ------------------------------------------------------------------
+    # Container cleanup
+    # ------------------------------------------------------------------
+
+    def _cleanup_stale_containers(self) -> None:
+        """Remove leftover deposit-cli containers and orphan networks."""
+        try:
+            subprocess.run(
+                ['docker', 'compose', '-f', 'deposit-cli.yml', 'rm', '-f', '-s'],
+                cwd=self.eth_docker_path,
+                capture_output=True, text=True, timeout=30,
+            )
+        except Exception as exc:
+            logger.warning("Failed to clean up stale deposit-cli containers: %s", exc)
+        try:
+            subprocess.run(
+                ['docker', 'compose', '-f', 'deposit-cli.yml', 'down', '--remove-orphans'],
+                cwd=self.eth_docker_path,
+                capture_output=True, text=True, timeout=30,
+            )
+        except Exception as exc:
+            logger.warning("Failed to clean up orphan networks: %s", exc)
+
+    # ------------------------------------------------------------------
     # Automated generation via pexpect (used by web pipeline)
     # ------------------------------------------------------------------
 
     def _generate_keys_auto(
         self, *, network, num_validators, withdrawal_address, use_lido_csm, keystore_password,
     ):
+        kwargs = dict(
+            network=network, num_validators=num_validators,
+            withdrawal_address=withdrawal_address, use_lido_csm=use_lido_csm,
+            keystore_password=keystore_password,
+        )
+        self._cleanup_stale_containers()
+        try:
+            return self._generate_keys_auto_inner(**kwargs)
+        except KeyGenerationError:
+            logger.warning("First key generation attempt failed, retrying after cleanup...")
+            self._cleanup_stale_containers()
+            return self._generate_keys_auto_inner(**kwargs)
+
+    def _generate_keys_auto_inner(
+        self, *, network, num_validators, withdrawal_address, use_lido_csm, keystore_password,
+    ):
         import pexpect
+
+        checksummed = _eip55_checksum(withdrawal_address) if withdrawal_address else ''
 
         cmd = (
             f'docker compose -f deposit-cli.yml run --rm '
@@ -123,8 +161,7 @@ class KeyManager:
             f'--num_validators {num_validators} '
             f'--chain {network}'
         )
-        if withdrawal_address:
-            checksummed = _eip55_checksum(withdrawal_address)
+        if checksummed:
             cmd += f' --eth1_withdrawal_address {checksummed}'
 
         logger.info("Starting deposit-cli: %s", cmd)
@@ -150,8 +187,6 @@ class KeyManager:
             #       address confirmation) come in varying order depending on whether
             #       flags were passed via CLI.  Use a flexible loop that handles
             #       each prompt as it appears, until we see the mnemonic "Press any key".
-            checksummed = _eip55_checksum(withdrawal_address) if withdrawal_address else ''
-            password_sent = 0  # track how many times we sent the password
 
             while True:
                 idx = child.expect([
@@ -168,7 +203,6 @@ class KeyManager:
                     child.sendline('4')
                 elif idx == 1:
                     child.sendline(keystore_password)
-                    password_sent += 1
                 elif idx == 2:
                     child.sendline(keystore_password)
                 elif idx == 3:
@@ -221,11 +255,16 @@ class KeyManager:
 
         except pexpect.TIMEOUT as exc:
             child.close(force=True)
+            self._cleanup_stale_containers()
             raise KeyGenerationError(
                 f'deposit-cli timed out. Last output: {child.before[-300:] if child.before else "N/A"}'
             ) from exc
         except pexpect.EOF:
             child.close()
+            self._cleanup_stale_containers()
+            raise KeyGenerationError(
+                f'deposit-cli exited unexpectedly. Last output: {child.before[-300:] if child.before else "N/A"}'
+            )
 
         deposit_data_path = self._find_deposit_data()
         has_keystore = os.path.isdir(self.keys_path) and any(

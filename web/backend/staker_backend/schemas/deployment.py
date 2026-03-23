@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from marshmallow import Schema, fields, ValidationError, validates_schema
 
+from ..constants import VALID_NETWORKS, LIDO_CSM_NETWORKS
+
 
 class KeyGenerationSchema(Schema):
     network = fields.String(load_default="holesky")
@@ -10,8 +12,8 @@ class KeyGenerationSchema(Schema):
     withdrawal_address = fields.String(load_default=None, allow_none=True)
     use_lido_csm = fields.Boolean(load_default=False)
 
-    VALID_NETWORKS = {"mainnet", "hoodi", "holesky", "sepolia"}
-    LIDO_CSM_NETWORKS = {"mainnet", "hoodi", "holesky"}
+    VALID_NETWORKS = set(VALID_NETWORKS)
+    LIDO_CSM_NETWORKS = set(LIDO_CSM_NETWORKS)
 
     @validates_schema
     def validate_values(self, data, **kwargs):

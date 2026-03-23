@@ -23,7 +23,7 @@ def _print_banner(host: str, port: int) -> None:
 if __name__ == "__main__":
     host = os.getenv("STAKER_AGENT_HOST", "0.0.0.0")
     port = int(os.getenv("STAKER_AGENT_PORT", "5001"))
-    debug = bool(app.config.get("DEBUG", True))
+    debug = bool(app.config.get("DEBUG", False))
 
     _print_banner(host, port)
 
@@ -32,5 +32,5 @@ if __name__ == "__main__":
         host=host,
         port=port,
         debug=debug,
-        allow_unsafe_werkzeug=True,
+        allow_unsafe_werkzeug=debug,
     )

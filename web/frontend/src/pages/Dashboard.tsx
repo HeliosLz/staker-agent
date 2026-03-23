@@ -4,6 +4,8 @@ import {
   CircleDot, AlertTriangle, RefreshCw, Server, Info,
 } from 'lucide-react';
 import { statusAPI } from '../services/api';
+import { useHealthMonitor } from '../hooks/useHealthMonitor';
+import type { HealthLevel } from '../types';
 
 interface Container {
   Name: string;
@@ -78,7 +80,7 @@ export default function Dashboard() {
     try {
       const response = await statusAPI.get();
       const data = response.data?.data;
-      setContainers(Array.isArray(data) ? data : []);
+      setContainers(Array.isArray(data?.containers) ? data.containers : []);
       setError(null);
       setLastRefresh(new Date());
     } catch {
@@ -111,11 +113,19 @@ export default function Dashboard() {
     }
   };
 
+  const { report: healthReport, alerts: healthAlerts } = useHealthMonitor();
+
   const network = containers.length > 0 ? parseLabel(containers, 'metrics.network') : '-';
   const runningCount = containers.filter(c => c.State === 'running').length;
   const totalCount = containers.length;
   const allRunning = totalCount > 0 && runningCount === totalCount;
   const anyRestarting = containers.some(c => c.State === 'restarting');
+
+  // Use real health level from monitor, fallback to container-based heuristic
+  const healthLevel: HealthLevel = healthReport?.overall
+    ?? (allRunning ? 'healthy' : anyRestarting ? 'degraded' : totalCount === 0 ? 'critical' : 'degraded');
+  const healthLabel = { healthy: 'Healthy', degraded: 'Degraded', critical: 'Critical' }[healthLevel];
+  const healthColor = { healthy: 'pink', degraded: 'amber', critical: 'red' }[healthLevel];
 
   // Extract client names from images
   const clClient = containers.find(c => c.Service === 'consensus')?.Image?.split(':')[0] || '-';
@@ -141,9 +151,9 @@ export default function Dashboard() {
           color="pink"
         />
         <StatPill
-          value={allRunning ? 'Healthy' : anyRestarting ? 'Syncing' : totalCount === 0 ? 'Offline' : 'Degraded'}
+          value={healthLabel}
           label="Node Status"
-          color={allRunning ? 'pink' : anyRestarting ? 'amber' : 'red'}
+          color={healthColor}
         />
       </div>
 
@@ -332,6 +342,38 @@ export default function Dashboard() {
           <div ref={logEndRef} />
         </div>
       </div>
+
+      {/* Health Checks + Alerts */}
+      {(healthReport || healthAlerts.length > 0) && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">Health Monitor</h2>
+          {healthReport && (
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-4">
+              {healthReport.checks.map((c) => {
+                const icon = c.level === 'healthy' ? '+' : c.level === 'degraded' ? '~' : '!';
+                const color = c.level === 'healthy' ? 'text-green-600' : c.level === 'degraded' ? 'text-amber-600' : 'text-red-600';
+                return (
+                  <div key={c.name} className={`text-sm ${color} bg-gray-50 rounded-lg px-3 py-2`}>
+                    [{icon}] {c.message}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {healthAlerts.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Recent Alerts</h3>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {healthAlerts.slice(0, 10).map((a, i) => (
+                  <div key={i} className="text-xs text-gray-600 bg-gray-50 rounded px-2 py-1">
+                    {a.message}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,11 @@
 """Configuration helpers for the backend service."""
 from __future__ import annotations
 
+import logging
 import os
 from typing import Dict, List
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_CORS = ["http://localhost:5173", "http://localhost:3000"]
 
@@ -10,8 +13,12 @@ DEFAULT_CORS = ["http://localhost:5173", "http://localhost:3000"]
 def load_config() -> Dict[str, object]:
     """Load configuration from environment variables."""
     origins = _parse_origins(os.getenv("STAKER_AGENT_CORS_ORIGINS"))
-    secret_key = os.getenv("STAKER_AGENT_SECRET_KEY", "staker-agent-secret-key")
-    debug = os.getenv("STAKER_AGENT_DEBUG", "true").lower() in {"1", "true", "yes"}
+    secret_key = os.getenv("STAKER_AGENT_SECRET_KEY")
+    if not secret_key:
+        import secrets
+        secret_key = secrets.token_hex(32)
+        logger.warning("STAKER_AGENT_SECRET_KEY not set — using random key (sessions won't survive restarts)")
+    debug = os.getenv("STAKER_AGENT_DEBUG", "false").lower() in {"1", "true", "yes"}
 
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
     ansible_dir_default = os.path.join(project_root, "ansible")

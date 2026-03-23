@@ -197,16 +197,13 @@ class SystemChecker:
             )
 
     @staticmethod
-    def check_network(timeout: int = 5) -> CheckResult:
-        """Check internet connectivity"""
+    def check_network(timeout: int = 10) -> CheckResult:
+        """Check internet connectivity via Ethereum RPC endpoint"""
         try:
-            os_type = platform.system()
-            cmd = ['ping', '-n' if os_type == 'Windows' else '-c', '1', '8.8.8.8']
-
             result = subprocess.run(
-                cmd,
+                ['curl', '-sf', '--max-time', str(timeout), '-o', '/dev/null', 'https://holesky.drpc.org'],
                 capture_output=True,
-                timeout=timeout,
+                timeout=timeout + 2,
                 shell=False
             )
 

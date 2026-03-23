@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Terminal,
-  Settings,
+  MessageCircle,
   HelpCircle,
   Hexagon,
 } from 'lucide-react';
@@ -22,7 +22,7 @@ const NAV_SECTIONS = [
   {
     title: 'Support',
     items: [
-      { to: '/setup', label: '设置向导', icon: Settings },
+      { to: '/setup', label: 'AI 助手', icon: MessageCircle },
       { to: 'https://ethdocker.com', label: '帮助文档', icon: HelpCircle, external: true },
     ],
   },

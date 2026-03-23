@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from marshmallow import Schema, fields, validates_schema, ValidationError
 
+from ..constants import VALID_NETWORKS, VALID_CLIENTS
+
 
 class ConfigRequestSchema(Schema):
     network = fields.String(required=True)
@@ -10,8 +12,8 @@ class ConfigRequestSchema(Schema):
     fee_recipient = fields.String(load_default=None, allow_none=True)
     withdrawal_address = fields.String(load_default=None, allow_none=True)
 
-    VALID_NETWORKS = {"mainnet", "hoodi", "holesky", "sepolia"}
-    VALID_CLIENTS = {"lighthouse", "prysm", "teku", "nimbus"}
+    VALID_NETWORKS = set(VALID_NETWORKS)
+    VALID_CLIENTS = set(VALID_CLIENTS)
 
     @validates_schema
     def validate_values(self, data, **kwargs):

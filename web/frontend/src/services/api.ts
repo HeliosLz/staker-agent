@@ -49,3 +49,10 @@ export const statusAPI = {
 export const healthAPI = {
   check: () => api.get('/api/health'),
 };
+
+// Monitor (Phase 2)
+export const monitorAPI = {
+  getHealth: () => api.get('/api/monitor'),
+  getAlerts: () => api.get('/api/monitor/alerts'),
+  getEvents: () => api.get('/api/monitor/events'),
+};
