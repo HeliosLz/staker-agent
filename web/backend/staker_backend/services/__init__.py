@@ -47,13 +47,32 @@ def init_services(app: Flask, repositories: RepositoryContainer) -> ServiceConta
     # Phase 3: Memory + Composer
     from core.agent.memory import MemoryStore
     from core.agent.composer import MessageComposer
-    from .agent import SYSTEM_PROMPT
+    from .agent import SYSTEM_PROMPT, OPENROUTER_BASE_URL
 
     agent_state = AgentState()
     notif_queue: Queue = Queue()
 
     memory_dir = os.path.expanduser("~/.staker-agent/memory")
     memory_store = MemoryStore(memory_dir)
+
+    # Inject embedding function for semantic search (optional)
+    _api_key = os.environ.get("OPENROUTER_API_KEY")
+    if _api_key:
+        import httpx as _httpx
+        import openai as _openai
+
+        _embed_client = _openai.OpenAI(
+            base_url=OPENROUTER_BASE_URL,
+            api_key=_api_key,
+            timeout=_httpx.Timeout(connect=10, read=30, write=10, pool=10),
+        )
+        _embed_model = os.getenv("EMBEDDING_MODEL", "openai/text-embedding-3-small")
+
+        def _embed_fn(text: str) -> list[float]:
+            resp = _embed_client.embeddings.create(model=_embed_model, input=text)
+            return resp.data[0].embedding
+
+        memory_store.set_embed_fn(_embed_fn, model=_embed_model)
 
     composer = MessageComposer(SYSTEM_PROMPT)
 

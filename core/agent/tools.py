@@ -198,6 +198,7 @@ def handle_recall(tool_input: Dict[str, Any], ctx: ToolContext) -> Dict[str, Any
     results = ctx.memory.recall(
         query=tool_input.get("query", ""),
         category=tool_input.get("category", ""),
+        limit=tool_input.get("limit", 10),
     )
     return {"success": True, "memories": results}
 
@@ -422,18 +423,22 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "recall",
-            "description": "检索之前保存的记忆。可按分类筛选或关键词搜索。",
+            "description": "混合搜索记忆（关键词匹配+语义相似度）。按相关性排序返回结果。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "搜索关键词（可选）",
+                        "description": "搜索内容（支持关键词和语义搜索）",
                     },
                     "category": {
                         "type": "string",
                         "enum": ["preferences", "incidents", "notes"],
                         "description": "按分类筛选（可选）",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "返回结果数量上限（默认10）",
                     },
                 },
                 "required": [],
