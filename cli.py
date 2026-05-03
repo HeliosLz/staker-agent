@@ -68,7 +68,8 @@ def keys(action, count, network, withdrawal_address, keys_path):
 @click.option('--client', type=click.Choice(['lighthouse', 'prysm', 'teku', 'nimbus']), help='Consensus client for remote deployment')
 @click.option('--fee-recipient', help='Fee recipient address (0x...) for remote deployment')
 @click.option('--withdrawal-address', help='Withdrawal address for remote deployment (0x...)')
-def deploy(host, user, port, ssh_key, network, client, fee_recipient, withdrawal_address):
+@click.option('--dry-run', is_flag=True, help='Print docker compose commands without executing them (demo mode)')
+def deploy(host, user, port, ssh_key, network, client, fee_recipient, withdrawal_address, dry_run):
     """Deploy and start validator node."""
     from commands.deploy import run_deploy
 
@@ -81,6 +82,7 @@ def deploy(host, user, port, ssh_key, network, client, fee_recipient, withdrawal
         client=client,
         fee_recipient=fee_recipient,
         withdrawal_address=withdrawal_address,
+        dry_run=dry_run,
     )
 
 @cli.command()

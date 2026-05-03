@@ -22,7 +22,7 @@ class StatusMonitor:
         """Get Docker container status"""
         try:
             result = subprocess.run(
-                ['docker', 'compose', 'ps', '--format', 'json'],
+                ['docker', 'compose', 'ps', '-a', '--format', 'json'],
                 cwd=self.eth_docker_path,
                 capture_output=True,
                 text=True,
