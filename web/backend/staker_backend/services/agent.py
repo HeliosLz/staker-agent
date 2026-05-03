@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import threading
 import time
 import uuid
@@ -32,6 +33,10 @@ MAX_RETRIES = 2
 RETRY_BASE_DELAY = 3  # seconds; kept short to avoid blocking thread-pool workers
 MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+ERROR_CONTEXT_OVERFLOW = "context_overflow"
+ERROR_RATE_LIMIT = "rate_limit"
+ERROR_TIMEOUT = "timeout"
+ERROR_OTHER = "other"
 
 # Re-export tool name constants for backward compatibility (used by formatting.py)
 TOOL_CHECK_ENV = "check_environment"
@@ -270,6 +275,201 @@ def _micro_compact(history: list[dict]) -> None:
                 history[idx]["content"] = "[Previous result compacted]"
 
 
+def _error_text(error: BaseException) -> str:
+    """Collect provider error details into one lowercase string for classification."""
+    parts = [type(error).__name__, str(error)]
+    for attr in ("body", "response"):
+        value = getattr(error, attr, None)
+        if value is None:
+            continue
+        parts.append(str(value))
+        text = getattr(value, "text", None)
+        if text:
+            parts.append(text)
+    return " ".join(parts).lower()
+
+
+def classify_agent_error(error: BaseException) -> str:
+    """Classify LLM/provider errors into recovery buckets."""
+    if isinstance(error, openai.RateLimitError):
+        return ERROR_RATE_LIMIT
+    if isinstance(error, openai.APITimeoutError):
+        return ERROR_TIMEOUT
+    if isinstance(error, (TimeoutError, httpx.TimeoutException)):
+        return ERROR_TIMEOUT
+
+    text = _error_text(error)
+    if any(marker in text for marker in (
+        "context_length_exceeded",
+        "maximum context length",
+        "context length",
+        "context window",
+        "too many tokens",
+        "token limit",
+        "prompt is too long",
+        "input is too long",
+    )):
+        return ERROR_CONTEXT_OVERFLOW
+    if any(marker in text for marker in (
+        "rate limit",
+        "rate_limit",
+        "too many requests",
+        "quota exceeded",
+        "status_code: 429",
+        " 429",
+    )):
+        return ERROR_RATE_LIMIT
+    if "timed out" in text or "timeout" in text:
+        return ERROR_TIMEOUT
+    return ERROR_OTHER
+
+
+def _trim_history_to_safe_boundary(history: list[dict], max_messages: int) -> None:
+    """Trim history in-place without starting on a tool-result fragment."""
+    if len(history) <= max_messages:
+        return
+
+    cut = len(history) - max_messages
+    original_cut = cut
+    while cut < len(history):
+        msg = history[cut]
+        role = msg.get("role", "")
+        if role in ("user", "system") or (role == "assistant" and "tool_calls" not in msg):
+            break
+        cut += 1
+    if cut >= len(history):
+        cut = original_cut
+        while cut > 0:
+            cut -= 1
+            msg = history[cut]
+            role = msg.get("role", "")
+            if role in ("user", "system") or (role == "assistant" and "tool_calls" not in msg):
+                break
+    del history[:cut]
+
+
+def _recover_context_overflow(history: list[dict]) -> None:
+    """Aggressively shrink history once after a context-window failure."""
+    _micro_compact(history)
+    original_len = len(history)
+    _trim_history_to_safe_boundary(history, max(12, MAX_HISTORY // 2))
+    if len(history) < original_len:
+        history.insert(0, {
+            "role": "system",
+            "content": "[Previous conversation omitted after context overflow recovery.]",
+        })
+
+
+def _strip_json_fence(text: str) -> Optional[str]:
+    match = re.search(r"```(?:json)?\s*(.*?)```", text, flags=re.IGNORECASE | re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return None
+
+
+def _extract_json_object(text: str) -> Optional[str]:
+    start = text.find("{")
+    if start == -1:
+        return None
+
+    depth = 0
+    in_string = False
+    escaped = False
+    for idx in range(start, len(text)):
+        char = text[idx]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:idx + 1].strip()
+    return text[start:].strip()
+
+
+def _remove_trailing_commas(text: str) -> str:
+    return re.sub(r",\s*([}\]])", r"\1", text)
+
+
+def _close_json_delimiters(text: str) -> str:
+    stack: list[str] = []
+    in_string = False
+    escaped = False
+    for char in text:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char in "{[":
+            stack.append(char)
+        elif char in "}]":
+            if stack and ((stack[-1] == "{" and char == "}") or (stack[-1] == "[" and char == "]")):
+                stack.pop()
+    suffix = "".join("}" if char == "{" else "]" for char in reversed(stack))
+    return text + suffix
+
+
+def _json_argument_candidates(raw: str) -> list[str]:
+    candidates: list[str] = []
+
+    def add(value: Optional[str]) -> None:
+        if value is None:
+            return
+        value = value.strip()
+        if value and value not in candidates:
+            candidates.append(value)
+
+    add(raw)
+    stripped = raw.strip()
+    add(stripped)
+    add(_strip_json_fence(stripped))
+    for candidate in list(candidates):
+        add(_extract_json_object(candidate))
+    for candidate in list(candidates):
+        add(_remove_trailing_commas(candidate))
+    for candidate in list(candidates):
+        add(_close_json_delimiters(candidate))
+        add(_remove_trailing_commas(_close_json_delimiters(candidate)))
+    return candidates
+
+
+def parse_tool_arguments(raw: str) -> tuple[dict, Optional[str]]:
+    """Parse and repair streamed tool-call arguments.
+
+    Returns (args, None) on success. On failure, returns ({}, error_message) so the
+    agent can emit a structured tool error instead of silently executing with {}.
+    """
+    if not raw or not raw.strip():
+        return {}, None
+
+    last_error = ""
+    for candidate in _json_argument_candidates(raw):
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError as exc:
+            last_error = f"{exc.msg} at char {exc.pos}"
+            continue
+        if isinstance(parsed, dict):
+            return parsed, None
+        return {}, f"tool arguments must be a JSON object, got {type(parsed).__name__}"
+    return {}, f"invalid JSON tool arguments: {last_error or 'unparseable input'}"
+
+
 def run_agent_turn_cb(
     user_message: str,
     services: ServiceContainer,
@@ -291,28 +491,7 @@ def run_agent_turn_cb(
             return
         session.busy = True
         session.history.append({"role": "user", "content": user_message})
-        if len(session.history) > MAX_HISTORY:
-            # Truncate but avoid splitting tool-call/tool-result pairs.
-            # Walk forward from the cut point to find a safe boundary
-            # (a "user" or "assistant" without tool_calls).
-            cut = len(session.history) - MAX_HISTORY
-            original_cut = cut
-            while cut < len(session.history):
-                msg = session.history[cut]
-                role = msg.get("role", "")
-                if role in ("user", "system") or (role == "assistant" and "tool_calls" not in msg):
-                    break
-                cut += 1
-            # If no safe boundary found forward, scan backward
-            if cut >= len(session.history):
-                cut = original_cut
-                while cut > 0:
-                    cut -= 1
-                    msg = session.history[cut]
-                    role = msg.get("role", "")
-                    if role in ("user", "system") or (role == "assistant" and "tool_calls" not in msg):
-                        break
-            session.history = session.history[cut:]
+        _trim_history_to_safe_boundary(session.history, MAX_HISTORY)
 
     try:
         for _turn in range(MAX_TURNS):
@@ -334,17 +513,21 @@ def run_agent_turn_cb(
                 _micro_compact(session.history)
                 history_snapshot = list(session.history)
 
-            if composer:
-                messages = composer.compose(history_snapshot)
-            else:
+            def _compose(snapshot: list[dict]) -> list[dict]:
+                if composer:
+                    return composer.compose(snapshot)
                 logger.warning("MessageComposer not available, memory injection skipped")
-                messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history_snapshot
+                return [{"role": "system", "content": SYSTEM_PROMPT}] + snapshot
+
+            messages = _compose(history_snapshot)
 
             # Retry loop for stream creation only.
             # Consumption is NOT retried: text deltas already sent to the UI
             # cannot be rolled back, so retrying would produce duplicate text.
             stream = None
-            for _attempt in range(MAX_RETRIES + 1):
+            recovered_context = False
+            retry_attempt = 0
+            while True:
                 try:
                     stream = _client.chat.completions.create(
                         model=MODEL,
@@ -353,22 +536,28 @@ def run_agent_turn_cb(
                         stream=True,
                     )
                     break
-                except (openai.RateLimitError, openai.APITimeoutError) as e:
-                    if _attempt < MAX_RETRIES:
-                        delay = RETRY_BASE_DELAY * (_attempt + 1)
-                        logger.warning("Retryable error (%s), retrying in %ds...", type(e).__name__, delay)
-                        time.sleep(delay)
-                        continue
-                    callbacks.on_error(f"API 请求失败，已重试 {MAX_RETRIES} 次: {e}")
-                    return
                 except Exception as e:
-                    err_str = str(e).lower()
-                    if ('timed out' in err_str or 'timeout' in err_str) and _attempt < MAX_RETRIES:
-                        delay = RETRY_BASE_DELAY * (_attempt + 1)
-                        logger.warning("Provider timeout, retrying in %ds...", delay)
+                    kind = classify_agent_error(e)
+                    if kind == ERROR_CONTEXT_OVERFLOW and not recovered_context:
+                        logger.warning("Context overflow from provider; compacting history and retrying once")
+                        with session.lock:
+                            _recover_context_overflow(session.history)
+                            history_snapshot = list(session.history)
+                        messages = _compose(history_snapshot)
+                        recovered_context = True
+                        continue
+                    if kind in (ERROR_RATE_LIMIT, ERROR_TIMEOUT) and retry_attempt < MAX_RETRIES:
+                        delay = RETRY_BASE_DELAY * (retry_attempt + 1)
+                        logger.warning("%s provider error, retrying in %ds...", kind, delay)
+                        retry_attempt += 1
                         time.sleep(delay)
                         continue
-                    callbacks.on_error(f"API 错误: {e}")
+                    if kind == ERROR_CONTEXT_OVERFLOW:
+                        callbacks.on_error(f"上下文过长，已尝试压缩后仍失败: {e}")
+                    elif kind in (ERROR_RATE_LIMIT, ERROR_TIMEOUT):
+                        callbacks.on_error(f"API 请求失败({kind})，已重试 {MAX_RETRIES} 次: {e}")
+                    else:
+                        callbacks.on_error(f"API 错误: {e}")
                     return
 
             if stream is None:
@@ -413,14 +602,12 @@ def run_agent_turn_cb(
             function_calls = []
             for idx in sorted(tool_calls_acc.keys()):
                 entry = tool_calls_acc[idx]
-                try:
-                    args = json.loads(entry["arguments"]) if entry["arguments"] else {}
-                except json.JSONDecodeError:
-                    args = {}
+                args, parse_error = parse_tool_arguments(entry["arguments"])
                 function_calls.append({
                     "id": entry["id"],
                     "name": entry["name"],
                     "arguments": args,
+                    "parse_error": parse_error,
                 })
 
             collected_text = "".join(text_parts)
@@ -464,7 +651,15 @@ def run_agent_turn_cb(
                 # Send redacted input to UI; execute with raw args
                 callbacks.on_tool_start(tool_name, redact_secrets(tool_input), tool_id)
 
-                result = execute_tool(tool_name, tool_input, ctx)
+                if fc.get("parse_error"):
+                    result = {
+                        "success": False,
+                        "error_type": "invalid_tool_arguments",
+                        "error": "Tool arguments were not valid JSON",
+                        "details": fc["parse_error"],
+                    }
+                else:
+                    result = execute_tool(tool_name, tool_input, ctx)
 
                 if tool_name == "todo":
                     called_todo = True
