@@ -37,6 +37,8 @@ ERROR_CONTEXT_OVERFLOW = "context_overflow"
 ERROR_RATE_LIMIT = "rate_limit"
 ERROR_TIMEOUT = "timeout"
 ERROR_OTHER = "other"
+TOOL_CONSECUTIVE_FAIL_LIMIT = 3
+GRACE_TURNS_BEFORE_END = 2
 
 # Re-export tool name constants for backward compatibility (used by formatting.py)
 TOOL_CHECK_ENV = "check_environment"
@@ -257,6 +259,30 @@ def _drain_notifications(services: ServiceContainer) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 KEEP_RECENT_TOOL_RESULTS = 3
+_COMPACT_KEEP_KEYS = (
+    "status", "health_level", "network", "sync_progress",
+    "container", "service", "step", "name",
+)
+
+
+def _summarize_tool_result(data: dict) -> str:
+    """Compact a tool result dict, preserving key diagnostic fields."""
+    tag = "OK" if data.get("success") else "FAIL"
+    parts = [f"[Compacted: {tag}]"]
+    if data.get("error"):
+        err = str(data["error"])
+        if len(err) > 80:
+            err = err[:80] + "..."
+        parts.append(f"error: {err}")
+    for key in _COMPACT_KEEP_KEYS:
+        val = data.get(key)
+        if val is None:
+            continue
+        val_str = str(val)
+        if len(val_str) > 40:
+            val_str = val_str[:40] + "..."
+        parts.append(f"{key}={val_str}")
+    return " | ".join(parts)
 
 
 def _micro_compact(history: list[dict]) -> None:
@@ -269,8 +295,7 @@ def _micro_compact(history: list[dict]) -> None:
         if len(content) > 200:
             try:
                 data = json.loads(content)
-                tag = "OK" if data.get("success") else "FAIL"
-                history[idx]["content"] = f"[Previous result: {tag}]"
+                history[idx]["content"] = _summarize_tool_result(data)
             except (json.JSONDecodeError, TypeError):
                 history[idx]["content"] = "[Previous result compacted]"
 
@@ -494,7 +519,22 @@ def run_agent_turn_cb(
         _trim_history_to_safe_boundary(session.history, MAX_HISTORY)
 
     try:
+        _tool_fail_streak: Dict[str, int] = {}
+
         for _turn in range(MAX_TURNS):
+            # Grace call: warn LLM before the final turn
+            is_grace_turn = _turn == MAX_TURNS - 1
+            if _turn == MAX_TURNS - GRACE_TURNS_BEFORE_END and _turn > 0:
+                with session.lock:
+                    session.history.append({
+                        "role": "user",
+                        "content": (
+                            "<system-notice>你即将达到本轮最大交互次数。"
+                            "请总结已完成的操作和剩余待办事项。"
+                            "如果有未完成的多步任务，请更新 todo 状态。</system-notice>"
+                        ),
+                    })
+
             # s08: drain monitor notifications into conversation context
             events = _drain_notifications(services)
             if events:
@@ -527,14 +567,16 @@ def run_agent_turn_cb(
             stream = None
             recovered_context = False
             retry_attempt = 0
+            create_kwargs: Dict[str, Any] = {
+                "model": MODEL,
+                "messages": messages,
+                "stream": True,
+            }
+            if not is_grace_turn:
+                create_kwargs["tools"] = TOOL_DEFINITIONS
             while True:
                 try:
-                    stream = _client.chat.completions.create(
-                        model=MODEL,
-                        messages=messages,
-                        tools=TOOL_DEFINITIONS,
-                        stream=True,
-                    )
+                    stream = _client.chat.completions.create(**create_kwargs)
                     break
                 except Exception as e:
                     kind = classify_agent_error(e)
@@ -544,6 +586,7 @@ def run_agent_turn_cb(
                             _recover_context_overflow(session.history)
                             history_snapshot = list(session.history)
                         messages = _compose(history_snapshot)
+                        create_kwargs["messages"] = messages
                         recovered_context = True
                         continue
                     if kind in (ERROR_RATE_LIMIT, ERROR_TIMEOUT) and retry_attempt < MAX_RETRIES:
@@ -658,8 +701,23 @@ def run_agent_turn_cb(
                         "error": "Tool arguments were not valid JSON",
                         "details": fc["parse_error"],
                     }
+                elif _tool_fail_streak.get(tool_name, 0) >= TOOL_CONSECUTIVE_FAIL_LIMIT:
+                    result = {
+                        "success": False,
+                        "error_type": "circuit_breaker",
+                        "error": (
+                            f"Tool '{tool_name}' has failed "
+                            f"{TOOL_CONSECUTIVE_FAIL_LIMIT} consecutive times. "
+                            "Try a different approach or ask the user for help."
+                        ),
+                    }
                 else:
                     result = execute_tool(tool_name, tool_input, ctx)
+
+                if result.get("success"):
+                    _tool_fail_streak[tool_name] = 0
+                else:
+                    _tool_fail_streak[tool_name] = _tool_fail_streak.get(tool_name, 0) + 1
 
                 if tool_name == "todo":
                     called_todo = True
