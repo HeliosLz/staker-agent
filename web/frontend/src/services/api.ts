@@ -24,10 +24,14 @@ export const configAPI = {
 
 // 部署管理
 export const deployAPI = {
-  full: (data: Record<string, unknown>) =>
-    api.post('/api/deploy/full', data),
-  generateKeys: (data: { network: string; num_validators: number; withdrawal_address: string }) =>
-    api.post('/api/deploy/keys/generate', data),
+  full: (data: object, socketId?: string) =>
+    api.post('/api/deploy/full', data, {
+      headers: socketId ? { 'X-Socket-ID': socketId } : {},
+    }),
+  generateKeys: (data: { network: string; num_validators: number; withdrawal_address: string }, socketId?: string) =>
+    api.post('/api/deploy/keys/generate', data, {
+      headers: socketId ? { 'X-Socket-ID': socketId } : {},
+    }),
   importKeys: (keysPath: string) =>
     api.post('/api/deploy/keys/import', { keys_path: keysPath }),
   start: () => api.post('/api/deploy/start'),

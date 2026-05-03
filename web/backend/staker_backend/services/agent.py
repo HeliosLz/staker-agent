@@ -22,6 +22,7 @@ from core.agent.tools import (
     ToolContext,
     execute as execute_tool,
 )
+from core.security import redact_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -438,7 +439,7 @@ def run_agent_turn_cb(
                         "type": "function",
                         "function": {
                             "name": fc["name"],
-                            "arguments": json.dumps(fc["arguments"]),
+                            "arguments": json.dumps(redact_secrets(fc["arguments"])),
                         },
                     }
                     for fc in function_calls
@@ -460,26 +461,28 @@ def run_agent_turn_cb(
                 tool_input = fc["arguments"]
                 tool_id = fc["id"] or uuid.uuid4().hex[:8]
 
-                callbacks.on_tool_start(tool_name, tool_input, tool_id)
+                # Send redacted input to UI; execute with raw args
+                callbacks.on_tool_start(tool_name, redact_secrets(tool_input), tool_id)
 
                 result = execute_tool(tool_name, tool_input, ctx)
 
                 if tool_name == "todo":
                     called_todo = True
 
+                # Deliver mnemonic via directed channel, then redact everything
                 if result.get("mnemonic"):
                     callbacks.on_mnemonic(result["mnemonic"])
-                    result["mnemonic"] = "[REDACTED - delivered separately]"
+                redacted_result = redact_secrets(result)
 
                 callbacks.on_tool_result(
-                    tool_name, tool_id, result, result.get("success", False)
+                    tool_name, tool_id, redacted_result, result.get("success", False)
                 )
 
                 with session.lock:
                     session.history.append({
                         "role": "tool",
                         "tool_call_id": tool_id,
-                        "content": json.dumps(result, ensure_ascii=False),
+                        "content": json.dumps(redacted_result, ensure_ascii=False),
                     })
 
             # s03: nag reminder — once per turn, as a separate user message

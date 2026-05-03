@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, Iterable, Optional
 
 from flask import Flask, current_app
 
+from core.security import redact_secrets
 from ..extensions import socketio
 
 
@@ -38,8 +39,8 @@ class Job:
             "status": self.status.value,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
-            "result": self.result,
-            "error": self.error,
+            "result": redact_secrets(self.result),
+            "error": redact_secrets(self.error),
         }
 
 

@@ -6,6 +6,7 @@ from marshmallow import ValidationError as MarshmallowValidationError
 
 from core.remote import RemoteConnectionOptions, RemoteDeploymentConfig
 
+from core.security import redact_secrets
 from ..extensions import socketio
 from ..services import get_services
 from ..services.pipeline import PipelineService
@@ -30,6 +31,12 @@ def full_deploy() -> object:
     app = current_app._get_current_object()
     remote_opts = data.get("remote")
     is_remote = bool(remote_opts)
+
+    # Socket.IO SID for directed mnemonic delivery — required when keys will be generated
+    originating_sid = request.headers.get("X-Socket-ID") or payload.get("socket_id")
+    will_generate_keys = not data.get("skip_keys", False) and not is_remote
+    if will_generate_keys and not originating_sid:
+        raise ValidationError("X-Socket-ID header required for key generation (mnemonic delivery channel)")
 
     # Mutable holder so the background thread can read the job_id set after submit().
     job_ref: dict = {}
@@ -79,25 +86,33 @@ def full_deploy() -> object:
 
     def on_success(job, result):
         with app.app_context():
-            # Extract mnemonic from keys result (if generated)
+            # Extract mnemonic from keys result BEFORE any broadcast
             mnemonic = None
             if isinstance(result, dict):
                 keys = result.get("keys")
                 if isinstance(keys, dict):
                     mnemonic = keys.pop("mnemonic", None)
+
+            # Broadcast completion WITHOUT mnemonic (redacted for safety)
             socketio.emit("pipeline_complete", {
                 "job_id": job.id,
                 "success": True,
-                "mnemonic": mnemonic,
-                "result": result if isinstance(result, dict) else {},
+                "result": redact_secrets(result) if isinstance(result, dict) else {},
             })
+
+            # Deliver mnemonic ONLY to the originating client
+            if mnemonic and originating_sid:
+                socketio.emit("pipeline_mnemonic", {
+                    "job_id": job.id,
+                    "mnemonic": mnemonic,
+                }, to=originating_sid)
 
     def on_failure(job, exc):
         with app.app_context():
             socketio.emit("pipeline_complete", {
                 "job_id": job.id,
                 "success": False,
-                "error": str(exc),
+                "error": redact_secrets(str(exc)),
             })
 
     job = services.jobs.submit(
@@ -200,11 +215,16 @@ def generate_keys() -> object:
             withdrawal_address=data.get("withdrawal_address"),
             use_lido_csm=bool(data.get("use_lido_csm", False)),
         )
-        return jsonify({"success": result.get("status") == "success", "data": result})
+        # Deliver mnemonic via directed Socket.IO channel, redact from HTTP response
+        mnemonic = result.pop("mnemonic", None) if isinstance(result, dict) else None
+        socket_id = request.headers.get("X-Socket-ID")
+        if mnemonic and socket_id:
+            socketio.emit("pipeline_mnemonic", {"mnemonic": mnemonic}, to=socket_id)
+        return jsonify({"success": result.get("status") == "success", "data": redact_secrets(result)})
     except ValueError as exc:
-        raise ValidationError(str(exc))
+        raise ValidationError(redact_secrets(str(exc)))
     except Exception as exc:  # pragma: no cover - defensive
-        return jsonify({"success": False, "error": str(exc)}), 500
+        return jsonify({"success": False, "error": redact_secrets(str(exc))}), 500
 
 
 @bp.route("/keys/import", methods=["POST"])
