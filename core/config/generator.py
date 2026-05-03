@@ -6,11 +6,13 @@ import yaml
 from pathlib import Path
 from rich.console import Console
 
+from core.validation import validate_evm_address
+
 console = Console()
 
 class ConfigGenerator:
-    def __init__(self, eth_docker_path=None):
-        self.eth_docker_path = eth_docker_path or os.path.expanduser('~/eth-docker')
+    def __init__(self, eth_docker_path: str):
+        self.eth_docker_path = eth_docker_path
         self.config_path = Path(__file__).parent.parent.parent / 'config' / 'networks.yaml'
 
         with open(self.config_path, 'r') as f:
@@ -18,6 +20,10 @@ class ConfigGenerator:
 
     def generate_env(self, network='holesky', client='lighthouse', fee_recipient=None, withdrawal_address=None):
         """Generate .env file for eth-docker"""
+        if fee_recipient:
+            validate_evm_address(fee_recipient, "fee_recipient")
+        if withdrawal_address:
+            validate_evm_address(withdrawal_address, "withdrawal_address")
 
         network_config = self.config['networks'].get(network)
         if not network_config:

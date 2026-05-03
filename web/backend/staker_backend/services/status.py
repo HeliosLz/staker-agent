@@ -10,11 +10,12 @@ from ..repositories.docker import DockerComposeRepository, CommandError
 class StatusService:
     """Manage node status checks and lifecycle operations."""
 
-    def __init__(self, docker: DockerComposeRepository) -> None:
+    def __init__(self, docker: DockerComposeRepository, eth_docker_path: str) -> None:
         self._docker = docker
+        self._eth_docker_path = eth_docker_path
 
     def get_status(self) -> Dict[str, Any]:
-        monitor = StatusMonitor()
+        monitor = StatusMonitor(self._eth_docker_path)
         return {
             "containers": monitor.get_container_status(),
             "sync": monitor.get_sync_status(),

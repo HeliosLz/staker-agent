@@ -1,12 +1,14 @@
 """
 configure command - Configure eth-docker settings
 """
+import os
+
 from rich.console import Console
 from rich.table import Table
 from rich.prompt import Prompt, Confirm
 from core.config.generator import ConfigGenerator
+from core.paths import get_eth_docker_path
 from core.system.env_checker import EnvChecker
-import os
 
 console = Console()
 
@@ -16,7 +18,7 @@ def run_configure(network, client, fee_recipient=None, withdrawal_address=None, 
     console.print("\n[bold cyan]🛰️  Staker Agent - Configure[/bold cyan]\n")
 
     # Check if eth-docker is installed
-    eth_docker_path = os.path.expanduser('~/eth-docker')
+    eth_docker_path = get_eth_docker_path()
     if not os.path.exists(eth_docker_path):
         console.print("[red]❌ eth-docker is not installed.[/red]")
         console.print("[yellow]Run 'python3 cli.py setup' first.[/yellow]\n")

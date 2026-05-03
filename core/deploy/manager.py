@@ -16,8 +16,8 @@ class DeployManager:
     No complex logic, just simple steps.
     """
 
-    def __init__(self, eth_docker_path=None):
-        self.eth_docker_path = eth_docker_path or os.path.expanduser('~/eth-docker')
+    def __init__(self, eth_docker_path: str):
+        self.eth_docker_path = eth_docker_path
 
     def check_prerequisites(self):
         """Check if ready to deploy and raise error if not."""

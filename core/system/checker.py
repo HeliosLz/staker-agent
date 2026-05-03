@@ -177,7 +177,8 @@ class SystemChecker:
         try:
             # shutil.disk_usage works on all platforms (Python 3.3+)
             import shutil
-            target_path = os.path.expanduser('~/eth-docker')
+            from core.paths import get_eth_docker_path
+            target_path = get_eth_docker_path()
             usage = shutil.disk_usage(target_path if os.path.exists(target_path) else '.')
             free_gb = usage.free / (1024 ** 3)
             passed = free_gb >= required_gb

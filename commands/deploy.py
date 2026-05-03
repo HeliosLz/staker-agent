@@ -47,7 +47,9 @@ def show_success_info(network: str):
     console.print("  1. Wait for sync to complete:")
     console.print("     [yellow]python3 cli.py status[/yellow]\n")
     console.print("  2. Import your validator keys:")
-    console.print("     [yellow]cp ~/eth-docker/.eth/validator_keys/keystore-*.json ~/eth-docker/.eth/validators/[/yellow]\n")
+    from core.paths import get_eth_docker_path
+    _p = get_eth_docker_path()
+    console.print(f"     [yellow]cp {_p}/.eth/validator_keys/keystore-*.json {_p}/.eth/validators/[/yellow]\n")
     console.print("  3. Restart to load keys:")
     console.print("     [yellow]python3 cli.py stop && python3 cli.py start[/yellow]\n")
     console.print("  4. Monitor validator status:")
@@ -87,7 +89,8 @@ def run_deploy(
 
     console.print("\n[bold cyan]🛰️  Staker Agent - Deploy[/bold cyan]\n")
     
-    deploy_mgr = DeployManager()
+    from core.paths import get_eth_docker_path
+    deploy_mgr = DeployManager(get_eth_docker_path())
 
     # Pre-deployment checks and UI
     console.print("[cyan]Checking prerequisites...[/cyan]")

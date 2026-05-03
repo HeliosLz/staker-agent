@@ -9,6 +9,7 @@ import subprocess
 import shutil
 
 from core.exceptions import KeyGenerationError, UserCancelledError
+from core.validation import validate_evm_address
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +42,8 @@ def _eip55_checksum(address: str) -> str:
 
 
 class KeyManager:
-    def __init__(self, eth_docker_path=None):
-        self.eth_docker_path = eth_docker_path or os.path.expanduser('~/eth-docker')
+    def __init__(self, eth_docker_path: str):
+        self.eth_docker_path = eth_docker_path
         self.keys_path = os.path.join(self.eth_docker_path, '.eth', 'validator_keys')
 
     def check_eth_docker(self):
@@ -74,6 +75,12 @@ class KeyManager:
             if not vault:
                 raise KeyGenerationError(f'Lido CSM not available on {network}')
             withdrawal_address = vault
+
+        if withdrawal_address:
+            try:
+                validate_evm_address(withdrawal_address, "withdrawal_address")
+            except ValueError as exc:
+                raise KeyGenerationError(str(exc)) from exc
 
         # Docker availability check
         try:

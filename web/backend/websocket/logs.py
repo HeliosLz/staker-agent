@@ -5,7 +5,6 @@ from flask_socketio import emit, join_room, leave_room
 import subprocess
 import threading
 import time
-import os
 
 from staker_backend.auth import authenticate_socketio
 
@@ -27,16 +26,16 @@ def init_socketio(socketio):
     @socketio.on('subscribe_logs')
     def handle_subscribe_logs(data):
         """订阅日志流"""
+        from flask import current_app
         service = data.get('service', 'consensus')
         room = f'logs_{service}'
+        eth_docker_path = current_app.config["ETH_DOCKER_PATH"]
 
         join_room(room)
-        print(f'Client subscribed to {service} logs')
 
-        # 启动日志流线程
         thread = threading.Thread(
             target=stream_logs,
-            args=(socketio, service, room)
+            args=(socketio, service, room, eth_docker_path)
         )
         thread.daemon = True
         thread.start()
@@ -54,10 +53,8 @@ def init_socketio(socketio):
 
         emit('unsubscribed', {'service': service})
 
-def stream_logs(socketio, service, room):
+def stream_logs(socketio, service, room, eth_docker_path):
     """流式输出日志"""
-    eth_docker_path = os.path.expanduser('~/eth-docker')
-
     try:
         # 使用 docker compose logs -f 实时跟踪日志
         process = subprocess.Popen(

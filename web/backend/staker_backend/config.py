@@ -5,6 +5,8 @@ import logging
 import os
 from typing import Dict, List
 
+from core.paths import get_eth_docker_path
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_CORS = ["http://localhost:5173", "http://localhost:3000"]
@@ -29,7 +31,7 @@ def load_config() -> Dict[str, object]:
         "CORS_ORIGINS": origins,
         "DEBUG": debug,
         "VERSION": os.getenv("STAKER_AGENT_VERSION", "0.1.0"),
-        "ETH_DOCKER_PATH": os.getenv("STAKER_AGENT_ETH_DOCKER_PATH", os.path.expanduser("~/eth-docker")),
+        "ETH_DOCKER_PATH": get_eth_docker_path(),
         "ANSIBLE_DIR": os.getenv("STAKER_AGENT_ANSIBLE_DIR", ansible_dir_default),
         "REMOTE_ARTIFACTS_DIR": artifacts_default,
     }

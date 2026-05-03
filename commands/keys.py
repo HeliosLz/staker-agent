@@ -4,6 +4,7 @@ keys command - Manage validator keys
 from rich.console import Console
 from rich.prompt import Confirm
 from core.keys.manager import KeyManager
+from core.paths import get_eth_docker_path
 from core.exceptions import KeyGenerationError
 
 console = Console()
@@ -11,7 +12,7 @@ console = Console()
 def run_keys(action, count=1, network='holesky', withdrawal_address=None, keys_path=None):
     """Manage validator keys"""
 
-    key_mgr = KeyManager()
+    key_mgr = KeyManager(get_eth_docker_path())
 
     if action == 'generate':
         console.print("\n[bold cyan]🛰️  Staker Agent - Key Generation[/bold cyan]")
@@ -126,7 +127,8 @@ def show_keys_info(info: dict, network: str):
     console.print("[bold cyan]📋 Next steps:[/bold cyan]")
     console.print("  1. Backup your mnemonic phrase securely")
     console.print("  2. Copy keystore files to your validator:")
-    console.print(f"     [yellow]cp {info['keys_path']}/keystore-*.json ~/eth-docker/.eth/validators/[/yellow]\n")
+    from core.paths import get_eth_docker_path
+    console.print(f"     [yellow]cp {info['keys_path']}/keystore-*.json {get_eth_docker_path()}/.eth/validators/[/yellow]\n")
     console.print("  3. Upload deposit_data.json:\n")
 
     if network == 'holesky':

@@ -1,7 +1,9 @@
 """Configuration request schema."""
 from __future__ import annotations
 
-from marshmallow import Schema, fields, validates_schema, ValidationError
+from marshmallow import Schema, fields, validates_schema, validates, ValidationError
+
+from core.validation import is_valid_evm_address
 
 from ..constants import VALID_NETWORKS, VALID_CLIENTS
 
@@ -14,6 +16,16 @@ class ConfigRequestSchema(Schema):
 
     VALID_NETWORKS = set(VALID_NETWORKS)
     VALID_CLIENTS = set(VALID_CLIENTS)
+
+    @validates("fee_recipient")
+    def validate_fee_recipient(self, value):
+        if value is not None and not is_valid_evm_address(value):
+            raise ValidationError("Must be a valid EVM address (0x + 40 hex chars)")
+
+    @validates("withdrawal_address")
+    def validate_withdrawal_address(self, value):
+        if value is not None and not is_valid_evm_address(value):
+            raise ValidationError("Must be a valid EVM address (0x + 40 hex chars)")
 
     @validates_schema
     def validate_values(self, data, **kwargs):
