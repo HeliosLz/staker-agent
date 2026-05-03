@@ -1,3 +1,13 @@
+> **Hackathon Disclosure**
+>
+> This project was started before ETHGlobal OpenAgents and is submitted for
+> **Showcase only** — not applying for Partner Prizes or Finalist judging.
+>
+> See [`HACKATHON.md`](./HACKATHON.md) for the full breakdown of pre-existing
+> vs. hackathon-period work, with commit-level references.
+
+---
+
 # Staker Agent
 
 以太坊验证节点的自主运维助手。部署、监控、自动修复、Telegram 告警 — 一个 Agent 全搞定。

@@ -148,17 +148,23 @@ DOMAIN=
         if withdrawal_address:
             env_content += f"# Withdrawal address\nWITHDRAWAL_ADDRESS={withdrawal_address}\n\n"
 
-        # Add checkpoint sync URLs per network
+        # Add checkpoint sync URLs per network. Override with
+        # STAKER_AGENT_CHECKPOINT_SYNC_URL env var (set to empty to disable
+        # checkpoint sync, e.g., when egress to ethpandaops is blocked).
         checkpoint_urls = {
             'mainnet': 'https://beaconstate.ethstaker.cc',
             'hoodi': 'https://checkpoint-sync.hoodi.ethpandaops.io',
             'holesky': 'https://checkpoint-sync.holesky.ethpandaops.io',
             'sepolia': 'https://checkpoint-sync.sepolia.ethpandaops.io'
         }
+        checkpoint_url = os.environ.get(
+            'STAKER_AGENT_CHECKPOINT_SYNC_URL',
+            checkpoint_urls.get(network, ''),
+        )
 
         env_content += f"""# Enable checkpoint sync for faster initial sync
 CHECKPOINT_SYNC=true
-CHECKPOINT_SYNC_URL={checkpoint_urls.get(network, '')}
+CHECKPOINT_SYNC_URL={checkpoint_url}
 
 """
 

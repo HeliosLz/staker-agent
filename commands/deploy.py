@@ -73,6 +73,7 @@ def run_deploy(
     client: Optional[str] = None,
     fee_recipient: Optional[str] = None,
     withdrawal_address: Optional[str] = None,
+    dry_run: bool = False,
 ) -> dict[str, object]:
     """Deploy validator node locally or to a remote host."""
     if host:
@@ -131,6 +132,15 @@ def run_deploy(
     if not Confirm.ask("\n[bold]Start deployment?[/bold]", default=True):
         console.print("[yellow]Deployment cancelled.[/yellow]\n")
         return {"success": False, "mode": "local", "error": "cancelled"}
+
+    if dry_run:
+        console.print("\n[bold yellow]🧪 DRY RUN — no Docker commands will execute[/bold yellow]")
+        console.print("[cyan]Would execute the following:[/cyan]\n")
+        console.print(f"  [dim]cd {info['location']}[/dim]")
+        console.print("  [yellow]docker compose pull[/yellow]")
+        console.print("  [yellow]docker compose up -d --remove-orphans[/yellow]\n")
+        console.print("[green]✅ Dry run complete. Re-run without --dry-run to actually deploy.[/green]\n")
+        return {"success": True, "mode": "local", "dry_run": True}
 
     def _status(event: str, payload: dict[str, object]) -> None:
         if event == "step":
