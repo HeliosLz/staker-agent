@@ -4,6 +4,7 @@ from __future__ import annotations
 from flask import Blueprint, jsonify, request
 from marshmallow import ValidationError as MarshmallowValidationError
 
+from ..auth import require_auth
 from ..services import get_services
 from ..services.configuration import ConfigurationError
 from ..schemas.configuration import ConfigRequestSchema
@@ -13,6 +14,7 @@ bp = Blueprint("config", __name__)
 
 
 @bp.route("/generate", methods=["POST"])
+@require_auth
 def generate_config() -> object:
     payload = request.get_json(silent=True) or {}
     try:

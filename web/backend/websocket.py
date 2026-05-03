@@ -6,6 +6,7 @@ from typing import Any, Dict
 from flask import current_app
 from flask_socketio import emit
 
+from staker_backend.auth import authenticate_socketio
 from staker_backend.services import get_services
 
 
@@ -19,8 +20,10 @@ def init_socketio(socketio):
     """Initialise WebSocket handlers."""
 
     @socketio.on("connect")
-    def handle_connect():
+    def handle_connect(auth=None):
         """客户端连接"""
+        if not authenticate_socketio(auth):
+            return False
         current_app.logger.info("WebSocket client connected")
         emit("connected", {"message": "Connected to Staker Agent"})
 

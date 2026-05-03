@@ -7,13 +7,16 @@ import threading
 import time
 import os
 
+from staker_backend.auth import authenticate_socketio
+
 def init_socketio(socketio):
     """初始化 WebSocket 事件处理"""
 
     @socketio.on('connect')
-    def handle_connect():
-        """客户端连接"""
-        print(f'Client connected')
+    def handle_connect(auth=None):
+        """客户端连接 — 要求 Bearer token 验证"""
+        if not authenticate_socketio(auth):
+            return False
         emit('connected', {'message': 'Connected to Staker Agent'})
 
     @socketio.on('disconnect')

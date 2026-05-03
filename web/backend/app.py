@@ -7,6 +7,7 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from staker_backend import create_app  # noqa: E402
+from staker_backend.auth import DEFAULT_HOST  # noqa: E402
 from staker_backend.extensions import socketio  # noqa: E402
 from websocket import init_socketio  # noqa: E402
 
@@ -21,7 +22,7 @@ def _print_banner(host: str, port: int) -> None:
 
 
 if __name__ == "__main__":
-    host = os.getenv("STAKER_AGENT_HOST", "0.0.0.0")
+    host = os.getenv("STAKER_AGENT_HOST", DEFAULT_HOST)
     port = int(os.getenv("STAKER_AGENT_PORT", "5001"))
     debug = bool(app.config.get("DEBUG", False))
 

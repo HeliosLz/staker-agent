@@ -3,12 +3,14 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
+from ..auth import require_auth
 from ..services.agent import set_api_key, get_api_key_status
 
 bp = Blueprint("agent", __name__)
 
 
 @bp.route("/apikey", methods=["POST"])
+@require_auth
 def configure_api_key():
     """Validate and store an API key (OpenRouter)."""
     data = request.get_json(silent=True) or {}

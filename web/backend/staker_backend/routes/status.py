@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
+from ..auth import require_auth
 from ..services import get_services
 
 bp = Blueprint("status", __name__)
@@ -32,6 +33,7 @@ def get_logs() -> object:
 
 
 @bp.route("/start", methods=["POST"])
+@require_auth
 def start_node() -> object:
     services = get_services()
     try:
@@ -42,6 +44,7 @@ def start_node() -> object:
 
 
 @bp.route("/stop", methods=["POST"])
+@require_auth
 def stop_node() -> object:
     services = get_services()
     try:
@@ -52,6 +55,7 @@ def stop_node() -> object:
 
 
 @bp.route("/restart", methods=["POST"])
+@require_auth
 def restart_node() -> object:
     services = get_services()
     try:

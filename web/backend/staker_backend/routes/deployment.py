@@ -7,6 +7,7 @@ from marshmallow import ValidationError as MarshmallowValidationError
 from core.remote import RemoteConnectionOptions, RemoteDeploymentConfig
 
 from core.security import redact_secrets
+from ..auth import require_auth
 from ..extensions import socketio
 from ..services import get_services
 from ..services.pipeline import PipelineService
@@ -19,6 +20,7 @@ bp = Blueprint("deploy", __name__)
 
 
 @bp.route("/full", methods=["POST"])
+@require_auth
 def full_deploy() -> object:
     """One-click full deployment pipeline."""
     payload = request.get_json(silent=True) or {}
@@ -137,6 +139,7 @@ def full_deploy() -> object:
 
 
 @bp.route("/start", methods=["POST"])
+@require_auth
 def start_deployment() -> object:
     payload = request.get_json(silent=True) or {}
     services = get_services()
@@ -199,6 +202,7 @@ def start_deployment() -> object:
 
 
 @bp.route("/keys/generate", methods=["POST"])
+@require_auth
 def generate_keys() -> object:
     payload = request.get_json(silent=True) or {}
     try:
@@ -228,6 +232,7 @@ def generate_keys() -> object:
 
 
 @bp.route("/keys/import", methods=["POST"])
+@require_auth
 def import_keys() -> object:
     payload = request.get_json(silent=True) or {}
     try:

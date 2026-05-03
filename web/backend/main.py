@@ -10,6 +10,7 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from staker_backend import create_app  # noqa: E402
+from staker_backend.auth import DEFAULT_HOST  # noqa: E402
 from staker_backend.extensions import socketio  # noqa: E402
 from staker_backend.services.agent import init_from_env  # noqa: E402
 from websocket import init_socketio  # noqa: E402
@@ -26,7 +27,7 @@ def main() -> None:
     with app.app_context():
         services = app.extensions["services"]
 
-    host = os.getenv("STAKER_AGENT_HOST", "0.0.0.0")
+    host = os.getenv("STAKER_AGENT_HOST", DEFAULT_HOST)
     port = int(os.getenv("STAKER_AGENT_PORT", "5001"))
 
     # Flask + Socket.IO in a daemon thread
