@@ -22,10 +22,10 @@ python3 web/backend/app.py
 
 ## Architecture
 
-Two-loop agent design based on [learn.shareai.run](https://learn.shareai.run/en/) patterns:
+Two-loop agent design:
 
 ```
-core/agent/tools.py          Unified Tool Registry (s02) — 12 tools
+core/agent/tools.py          Unified Tool Registry (s02) — 14 tools
                              Shared by both loops
                     ┌────────────┴────────────┐
           Monitor Loop (s11)          Chat Loop (s01)
@@ -47,10 +47,12 @@ core/agent/tools.py          Unified Tool Registry (s02) — 12 tools
 ```
 core/                          Pure business logic, no Flask dependency
   agent/
-    tools.py                   Tool Registry: dispatch map name -> handler (12 tools)
+    tools.py                   Tool Registry: dispatch map name -> handler (14 tools)
     state.py                   AgentState: shared between both loops
     todo.py                    s03: TodoManager for multi-step task tracking
     monitor.py                 MonitorLoop: autonomous health monitoring
+    memory.py                  MemoryStore: disk-persisted memory with hybrid search
+    composer.py                MessageComposer: external message assembly with injector chain
     notifier.py                Event formatting (MarkdownV2)
     skills/                    s05: on-demand knowledge (staking.md, lido-csm.md, troubleshooting.md)
   monitor/
@@ -101,6 +103,7 @@ def handle_something(tool_input: Dict[str, Any], ctx: ToolContext) -> Dict[str, 
     # ctx.state          — AgentState (ops handlers)
     # ctx.status_monitor — StatusMonitor (health handlers)
     # ctx.todo           — TodoManager (task tracking, per-session)
+    # ctx.memory         — MemoryStore (persistent memory, DI)
     # ctx.eth_docker_path — ~/eth-docker
     return {"success": True, ...}
 ```
@@ -111,6 +114,16 @@ The LLM uses the `todo` tool to create/update a task list before multi-step oper
 - If 3+ turns pass without a `todo` update, a `<reminder>` is injected into tool results
 - TodoManager is per-session (stored on `_Session.todo`), survives context compression
 - The LLM should create a todo list at the start of deployment, then update after each step
+
+### Memory system
+- `MemoryStore` (`core/agent/memory.py`): disk-persisted to `~/.staker-agent/memory/`, thread-safe
+- Three categories: `preferences` (dict), `incidents` (list, max 50), `notes` (list)
+- `recall()` uses hybrid search: keyword token overlap (0.4) + semantic cosine similarity (0.6)
+- Embedding function injected via `set_embed_fn()` (DI); falls back to keyword-only without it
+- Embeddings computed in background `ThreadPoolExecutor(1)`, flushed with 5s debounce
+- `get_context()` returns compressed summary for system prompt injection, cached with dirty flag
+- `MessageComposer` (`core/agent/composer.py`): assembles LLM messages via injector chain
+- Agent loop calls `composer.compose(history)` — does not know about memory or system prompt content
 
 ### Adding a Telegram command
 1. Add handler in `telegram_bot/handlers.py`
@@ -130,6 +143,7 @@ The LLM uses the `todo` tool to create/update a task list before multi-step oper
 | `MONITOR_CHECK_INTERVAL` | `60` | Seconds between health checks |
 | `MONITOR_ALERT_COOLDOWN` | `300` | Seconds before re-alerting |
 | `MONITOR_MAX_AUTO_ACTIONS` | `3` | Auto-restart limit before escalation |
+| `EMBEDDING_MODEL` | `openai/text-embedding-3-small` | Embedding model for semantic search |
 | `STAKER_AGENT_ETH_DOCKER_PATH` | `~/eth-docker` | eth-docker install path |
 
 ## Conventions
@@ -139,18 +153,19 @@ The LLM uses the `todo` tool to create/update a task list before multi-step oper
 - Tool handlers return `{"success": bool, ...}` dicts
 - Telegram formatting uses MarkdownV2 (escape with `escape_md()`)
 - Health levels: `HealthLevel.HEALTHY`, `DEGRADED`, `CRITICAL` (enum in `core/monitor/health.py`)
-- Monitor events flow: MonitorLoop -> notif_queue -> Chat Loop drains before LLM call
+- Monitor events flow: MonitorLoop -> notif_queue (bounded, maxsize=200) -> Chat Loop drains before LLM call
+- Monitor sinks retry with exponential backoff (1s, 2s, max 3 attempts)
 - TodoWrite: LLM creates task list via `todo` tool before multi-step ops; nag after 3 idle turns
 - Chinese is the default UI language, but code/logs are in English
 
-## Applied Agent Patterns (from learn.shareai.run)
+## Applied Agent Patterns
 
-| Pattern | Session | Where Applied |
-|---------|---------|---------------|
-| Agent Loop | s01 | `services/agent.py` — while True + tools + stop_reason |
-| Tool Dispatch | s02 | `core/agent/tools.py` — TOOL_HANDLERS dict |
-| TodoWrite | s03 | `core/agent/todo.py` — task tracking + nag reminder |
-| Skills | s05 | `core/agent/skills/` — on-demand knowledge loading |
-| Compact | s06 | `services/agent.py` — `_micro_compact()` on old tool results |
-| Background Notifications | s08 | `services/agent.py` — `_drain_notifications()` before LLM call |
-| Autonomous Agent | s11 | `core/agent/monitor.py` — rules-driven background loop |
+| Pattern | Where Applied |
+|---------|---------------|
+| Agent Loop | `services/agent.py` — while True + tools + stop_reason |
+| Tool Dispatch | `core/agent/tools.py` — TOOL_HANDLERS dict |
+| TodoWrite | `core/agent/todo.py` — task tracking + nag reminder |
+| Skills | `core/agent/skills/` — on-demand knowledge loading |
+| Compact | `services/agent.py` — `_micro_compact()` on old tool results |
+| Background Notifications | `services/agent.py` — `_drain_notifications()` before LLM call |
+| Autonomous Agent | `core/agent/monitor.py` — rules-driven background loop |

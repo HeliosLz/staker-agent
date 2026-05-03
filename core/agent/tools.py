@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict
 
+from core.security import redact_secrets
+
 logger = logging.getLogger(__name__)
 
 SKILLS_DIR = Path(__file__).parent / "skills"
@@ -487,5 +489,5 @@ def execute(name: str, tool_input: Dict[str, Any], ctx: ToolContext) -> Dict[str
     try:
         return handler(tool_input, ctx)
     except Exception as e:
-        logger.error("Tool %s failed: %s", name, traceback.format_exc())
-        return {"success": False, "error": str(e)}
+        logger.error("Tool %s failed: %s", name, redact_secrets(traceback.format_exc()))
+        return {"success": False, "error": redact_secrets(str(e))}

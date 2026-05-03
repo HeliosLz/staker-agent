@@ -5,6 +5,8 @@ Staker Agent - Ethereum Validator Deployment Tool
 import click
 from rich.console import Console
 
+from core.paths import get_eth_docker_path
+
 console = Console()
 
 @click.group()
@@ -23,7 +25,7 @@ def init():
 def validate():
     """Validate configuration and setup"""
     from core.config.validator import ConfigValidator
-    validator = ConfigValidator()
+    validator = ConfigValidator(get_eth_docker_path())
     validator.validate_all()
 
 @cli.command()
@@ -101,14 +103,14 @@ def logs(service, follow):
 def stop():
     """Stop validator node"""
     from core.deploy.manager import DeployManager
-    deploy_mgr = DeployManager()
+    deploy_mgr = DeployManager(get_eth_docker_path())
     deploy_mgr.stop()
 
 @cli.command()
 def start():
     """Start validator node"""
     from core.deploy.manager import DeployManager
-    deploy_mgr = DeployManager()
+    deploy_mgr = DeployManager(get_eth_docker_path())
     deploy_mgr.start()
 
 

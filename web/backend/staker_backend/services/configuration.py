@@ -29,7 +29,7 @@ class ConfigurationService:
         if client not in VALID_CLIENTS:
             raise ValueError(f"Invalid client '{client}'. Must be one of: {', '.join(VALID_CLIENTS)}")
 
-        generator = ConfigGenerator()
+        generator = ConfigGenerator(self.eth_docker_path)
         success = generator.generate_env(
             network=network,
             client=client,

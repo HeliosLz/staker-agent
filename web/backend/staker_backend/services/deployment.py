@@ -48,7 +48,7 @@ class DeploymentService:
         return manager.install()
 
     def start(self) -> bool:
-        deployer = DeployManager()
+        deployer = DeployManager(self.eth_docker_path)
         return bool(deployer.deploy())
 
     def generate_keys(self, *, network: str, num_validators: int, withdrawal_address: str | None, use_lido_csm: bool, keystore_password: str | None = None) -> Dict[str, Any]:

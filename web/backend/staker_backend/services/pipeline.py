@@ -70,7 +70,7 @@ class PipelineService:
 
         # Step 2 – install eth-docker
         _progress(2, LOCAL_STEPS[1][1], "running", LOCAL_STEPS[1][2])
-        eth = EthDockerManager()
+        eth = EthDockerManager(install_path=self._c.configuration.eth_docker_path)
         if not eth.install():
             _progress(2, LOCAL_STEPS[1][1], "failed", "eth-docker 安装失败")
             raise RuntimeError("eth-docker installation failed")

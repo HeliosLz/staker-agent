@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Callable, Dict, Optional
 
 from core.config.generator import ConfigGenerator
+from core.paths import get_eth_docker_path
 
 from .ansible_runner import AnsibleRunner
 from .preflight import RemotePreflightChecker, RemotePreflightResult
@@ -129,7 +130,7 @@ class RemoteDeployManager:
         )
 
     def _prepare_artifacts(self) -> tuple[str, str]:
-        generator = ConfigGenerator()
+        generator = ConfigGenerator(get_eth_docker_path())
         if self.deployment.network and self.deployment.client:
             generator.generate_env(
                 network=self.deployment.network,

@@ -10,8 +10,8 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 console = Console()
 
 class EthDockerManager:
-    def __init__(self, install_path=None):
-        self.install_path = install_path or os.path.expanduser('~/eth-docker')
+    def __init__(self, install_path: str):
+        self.install_path = install_path
 
     def is_installed(self):
         """Check if eth-docker is already installed"""

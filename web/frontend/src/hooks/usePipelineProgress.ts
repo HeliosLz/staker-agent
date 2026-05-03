@@ -76,7 +76,6 @@ export function usePipelineProgress() {
     socket.on('pipeline_complete', (data: {
       job_id: string;
       success: boolean;
-      mnemonic?: string;
       result?: any;
       error?: string;
     }) => {
@@ -86,20 +85,36 @@ export function usePipelineProgress() {
         completed: true,
         success: data.success,
         error: data.error || null,
-        mnemonic: data.mnemonic || null,
+      }));
+    });
+
+    // Mnemonic delivered via directed one-time channel (only to originating client)
+    socket.on('pipeline_mnemonic', (data: { job_id: string; mnemonic: string }) => {
+      setState(prev => ({
+        ...prev,
+        mnemonic: data.mnemonic,
       }));
     });
 
     return () => {
       socket.off('pipeline_progress');
       socket.off('pipeline_complete');
+      socket.off('pipeline_mnemonic');
     };
   }, []);
 
   const startPipeline = useCallback(async (config: PipelineConfig) => {
     setState({ ...initialState, steps: [] });
     try {
-      const res = await deployAPI.full(config);
+      const socket = getSocket();
+      if (!socket.connected) {
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Socket 连接超时')), 5000);
+          socket.once('connect', () => { clearTimeout(timeout); resolve(); });
+          if (!socket.connected) socket.connect();
+        });
+      }
+      const res = await deployAPI.full(config, socket.id!);
       setState(prev => ({ ...prev, jobId: res.data?.data?.job?.id || null }));
     } catch (err: any) {
       setState(prev => ({

@@ -8,8 +8,8 @@ from rich.table import Table
 console = Console()
 
 class ConfigValidator:
-    def __init__(self, eth_docker_path=None):
-        self.eth_docker_path = eth_docker_path or os.path.expanduser('~/eth-docker')
+    def __init__(self, eth_docker_path: str):
+        self.eth_docker_path = eth_docker_path
         self.issues = []
         self.warnings = []
 

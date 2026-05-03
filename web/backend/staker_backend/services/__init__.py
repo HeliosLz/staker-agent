@@ -24,7 +24,7 @@ def init_services(app: Flask, repositories: RepositoryContainer) -> ServiceConta
     eth_docker_path = app.config["ETH_DOCKER_PATH"]
     configuration = ConfigurationService(eth_docker_path, repositories.files)
     deployment = DeploymentService(eth_docker_path, repositories.files)
-    status = StatusService(repositories.docker)
+    status = StatusService(repositories.docker, eth_docker_path)
     fixes = FixService(environment)
     job_manager = app.extensions.get("jobs")
     if not isinstance(job_manager, JobManager):
@@ -50,7 +50,7 @@ def init_services(app: Flask, repositories: RepositoryContainer) -> ServiceConta
     from .agent import SYSTEM_PROMPT, OPENROUTER_BASE_URL
 
     agent_state = AgentState()
-    notif_queue: Queue = Queue()
+    notif_queue: Queue = Queue(maxsize=200)
 
     memory_dir = os.path.expanduser("~/.staker-agent/memory")
     memory_store = MemoryStore(memory_dir)

@@ -1,7 +1,9 @@
 """Schemas for remote operations."""
 from __future__ import annotations
 
-from marshmallow import Schema, fields, validates_schema, ValidationError
+from marshmallow import Schema, fields, validates, validates_schema, ValidationError
+
+from core.validation import is_valid_evm_address
 
 
 class RemotePreflightSchema(Schema):
@@ -26,6 +28,16 @@ class RemoteDeploymentConfigSchema(Schema):
     client = fields.String(required=True)
     fee_recipient = fields.String(load_default=None, allow_none=True)
     withdrawal_address = fields.String(load_default=None, allow_none=True)
+
+    @validates("fee_recipient")
+    def validate_fee_recipient(self, value):
+        if value is not None and not is_valid_evm_address(value):
+            raise ValidationError("Must be a valid EVM address (0x + 40 hex chars)")
+
+    @validates("withdrawal_address")
+    def validate_withdrawal_address(self, value):
+        if value is not None and not is_valid_evm_address(value):
+            raise ValidationError("Must be a valid EVM address (0x + 40 hex chars)")
 
 
 class RemoteDeploySchema(Schema):

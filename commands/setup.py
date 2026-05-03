@@ -4,6 +4,7 @@ setup command - Install Docker and eth-docker
 from rich.console import Console
 from core.docker.manager import DockerManager
 from core.docker.eth_docker import EthDockerManager
+from core.paths import get_eth_docker_path
 from core.system.env_checker import EnvChecker
 
 console = Console()
@@ -41,7 +42,7 @@ def run_setup(skip_docker=False):
 
     # Step 3: Install eth-docker
     console.print("\n[cyan]Step 3: Setting up eth-docker...[/cyan]")
-    eth_docker_mgr = EthDockerManager()
+    eth_docker_mgr = EthDockerManager(install_path=get_eth_docker_path())
 
     if not eth_docker_mgr.install():
         console.print("\n[red]❌ eth-docker installation failed.[/red]\n")

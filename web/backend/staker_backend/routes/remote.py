@@ -4,6 +4,7 @@ from __future__ import annotations
 from flask import Blueprint, jsonify, request
 from marshmallow import ValidationError as MarshmallowValidationError
 
+from ..auth import require_auth
 from ..errors import ValidationError
 from ..schemas.remote import RemotePreflightSchema
 from ..services import get_services
@@ -12,6 +13,7 @@ bp = Blueprint("remote", __name__)
 
 
 @bp.route("/preflight", methods=["POST"])
+@require_auth
 def remote_preflight() -> object:
     payload = request.get_json(silent=True) or {}
     try:

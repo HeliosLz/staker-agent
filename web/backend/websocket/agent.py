@@ -9,6 +9,7 @@ from flask import current_app
 from flask_socketio import emit
 from flask import request
 
+from core.security import redact_secrets
 from staker_backend.services.agent import run_agent_turn, reset_conversation, remove_session
 from staker_backend.services import get_services
 
@@ -37,7 +38,7 @@ def init_agent_socketio(socketio):
                     services = get_services()
                     run_agent_turn(message, services, socketio, sid)
                 except Exception as exc:
-                    socketio.emit("agent_error", {"error": str(exc)}, to=sid)
+                    socketio.emit("agent_error", {"error": redact_secrets(str(exc))}, to=sid)
 
         _executor.submit(_run)
 

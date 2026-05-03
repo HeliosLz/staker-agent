@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 class StatusMonitor:
-    def __init__(self, eth_docker_path=None):
-        self.eth_docker_path = eth_docker_path or os.path.expanduser('~/eth-docker')
+    def __init__(self, eth_docker_path: str):
+        self.eth_docker_path = eth_docker_path
 
     def get_container_status(self):
         """Get Docker container status"""
