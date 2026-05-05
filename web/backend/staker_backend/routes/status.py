@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
+from core.security import redact_secrets
 from ..auth import require_auth
 from ..services import get_services
 
@@ -20,6 +21,7 @@ def get_status() -> object:
 
 
 @bp.route("/logs", methods=["GET"])
+@require_auth
 def get_logs() -> object:
     service_name = request.args.get("service", "consensus")
     lines = request.args.get("lines", "100")
@@ -27,9 +29,11 @@ def get_logs() -> object:
     services = get_services()
     try:
         logs = services.status.fetch_logs(service_name, lines)
+        if isinstance(logs.get("logs"), str):
+            logs["logs"] = redact_secrets(logs["logs"])
         return jsonify({"success": True, "data": logs})
     except Exception as exc:
-        return jsonify({"success": False, "error": str(exc)}), 500
+        return jsonify({"success": False, "error": redact_secrets(str(exc))}), 500
 
 
 @bp.route("/start", methods=["POST"])

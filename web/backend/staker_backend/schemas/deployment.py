@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from marshmallow import Schema, fields, ValidationError, validates_schema
 
+from core.validation import is_valid_evm_address
 from ..constants import VALID_NETWORKS, LIDO_CSM_NETWORKS
 
 
@@ -29,6 +30,12 @@ class KeyGenerationSchema(Schema):
 
         if data.get("num_validators", 1) <= 0:
             errors["num_validators"] = ["Number of validators must be positive"]
+
+        addr = data.get("withdrawal_address")
+        if addr is not None and not is_valid_evm_address(addr):
+            errors["withdrawal_address"] = [
+                "Must be a valid EVM address (0x followed by 40 hex characters)"
+            ]
 
         if errors:
             raise ValidationError(errors)

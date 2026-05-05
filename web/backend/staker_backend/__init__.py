@@ -48,7 +48,7 @@ def _init_extensions(app: Flask) -> None:
             r"/api/*": {
                 "origins": origins,
                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-                "allow_headers": ["Content-Type", "Authorization"],
+                "allow_headers": ["Content-Type", "Authorization", "X-Socket-ID"],
             }
         },
     )

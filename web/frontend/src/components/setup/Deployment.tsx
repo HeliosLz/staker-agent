@@ -48,7 +48,6 @@ export default function Deployment({
   validatorCount,
   useLidoCSM,
   lidoCsmInfo,
-  loading: _loading,
   error,
   setError,
   handleDeploy,

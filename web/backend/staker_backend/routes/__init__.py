@@ -11,6 +11,7 @@ from .fixes import bp as fix_bp
 from .jobs import bp as jobs_bp
 from .remote import bp as remote_bp
 from .agent import bp as agent_bp
+from .auth import bp as auth_bp
 from .monitor import bp as monitor_bp
 
 
@@ -23,4 +24,5 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(jobs_bp, url_prefix="/api/jobs")
     app.register_blueprint(remote_bp, url_prefix="/api/remote")
     app.register_blueprint(agent_bp, url_prefix="/api/agent")
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(monitor_bp, url_prefix="/api/monitor")

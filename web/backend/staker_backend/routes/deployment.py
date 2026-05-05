@@ -210,6 +210,12 @@ def generate_keys() -> object:
     except MarshmallowValidationError as exc:
         raise ValidationError("Invalid key generation request", details=exc.messages) from exc
 
+    originating_sid = request.headers.get("X-Socket-ID")
+    if not originating_sid:
+        raise ValidationError(
+            "X-Socket-ID header required for key generation (mnemonic delivery channel)"
+        )
+
     services = get_services()
 
     try:
@@ -219,11 +225,9 @@ def generate_keys() -> object:
             withdrawal_address=data.get("withdrawal_address"),
             use_lido_csm=bool(data.get("use_lido_csm", False)),
         )
-        # Deliver mnemonic via directed Socket.IO channel, redact from HTTP response
         mnemonic = result.pop("mnemonic", None) if isinstance(result, dict) else None
-        socket_id = request.headers.get("X-Socket-ID")
-        if mnemonic and socket_id:
-            socketio.emit("pipeline_mnemonic", {"mnemonic": mnemonic}, to=socket_id)
+        if mnemonic:
+            socketio.emit("pipeline_mnemonic", {"mnemonic": mnemonic}, to=originating_sid)
         return jsonify({"success": result.get("status") == "success", "data": redact_secrets(result)})
     except ValueError as exc:
         raise ValidationError(redact_secrets(str(exc)))

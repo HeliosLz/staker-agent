@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getAuthToken } from './authToken';
 
 const API_BASE_URL = '';
 
@@ -7,6 +8,14 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+api.interceptors.request.use((config) => {
+  const token = getAuthToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 // 环境检测

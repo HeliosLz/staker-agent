@@ -76,7 +76,7 @@ export function usePipelineProgress() {
     socket.on('pipeline_complete', (data: {
       job_id: string;
       success: boolean;
-      result?: any;
+      result?: Record<string, unknown>;
       error?: string;
     }) => {
       setState(prev => ({
@@ -116,12 +116,13 @@ export function usePipelineProgress() {
       }
       const res = await deployAPI.full(config, socket.id!);
       setState(prev => ({ ...prev, jobId: res.data?.data?.job?.id || null }));
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
       setState(prev => ({
         ...prev,
         completed: true,
         success: false,
-        error: err.response?.data?.message || err.message || '请求失败',
+        error: axiosErr.response?.data?.message || axiosErr.message || '请求失败',
       }));
     }
   }, []);
